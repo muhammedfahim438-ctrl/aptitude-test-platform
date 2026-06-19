@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Aptitude Test Platform
 
 University Scrum team project — see `docs/PROJECT_IMPLEMENTATION_KIT.md` for
@@ -36,3 +37,6 @@ npm run dev
 =======
 # aptitude-test-platform
 >>>>>>> fahim/main
+=======
+# aptitude-test-platform
+>>>>>>> e277db1560b71d1df70646624828b8c2de145dfa
