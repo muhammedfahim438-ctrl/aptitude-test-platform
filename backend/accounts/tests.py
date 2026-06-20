@@ -167,3 +167,79 @@ class LoginEndpointTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['user']['is_student'])
         self.assertFalse(response.data['user']['is_teacher'])
+class SecurityAuditTest(TestCase):
+
+    def setUp(self):
+        self.student = User.objects.create_user(
+            email='student@test.com',
+            password='testpass123',
+            full_name='Test Student',
+            is_student=True,
+            is_active=True,
+        )
+        self.teacher = User.objects.create_user(
+            email='teacher@test.com',
+            password='testpass123',
+            full_name='Test Teacher',
+            is_teacher=True,
+            is_active=True,
+        )
+        AnswerKey.objects.create(
+            date='2026-06-18',
+            correct_answers={"q1": "A", "q2": "B", "q3": "C"}
+        )
+
+    def get_token(self, email, password):
+        response = self.client.post('/api/auth/login/', {
+            'email': email,
+            'password': password,
+        }, content_type='application/json')
+        return response.data['access']
+
+    def test_unauthenticated_request_to_answer_key_returns_401(self):
+        response = self.client.get('/api/tests/answers/?date=2026-06-18')
+        self.assertEqual(response.status_code, 401)
+
+    def test_no_token_returns_401(self):
+        response = self.client.get('/api/tests/answers/?date=2026-06-18')
+        self.assertEqual(response.status_code, 401)
+
+    def test_invalid_token_returns_401(self):
+        response = self.client.get(
+            '/api/tests/answers/?date=2026-06-18',
+            HTTP_AUTHORIZATION='Bearer invalidtokenhere'
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_student_token_payload_has_correct_fields(self):
+        response = self.client.post('/api/auth/login/', {
+            'email': 'student@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertTrue(response.data['user']['is_student'])
+        self.assertFalse(response.data['user']['is_teacher'])
+
+    def test_teacher_token_payload_has_correct_fields(self):
+        response = self.client.post('/api/auth/login/', {
+            'email': 'teacher@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertFalse(response.data['user']['is_student'])
+        self.assertTrue(response.data['user']['is_teacher'])
+
+    def test_health_check_is_public(self):
+        response = self.client.get('/api/health/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_login_endpoint_is_public(self):
+        response = self.client.post('/api/auth/login/', {
+            'email': 'student@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
