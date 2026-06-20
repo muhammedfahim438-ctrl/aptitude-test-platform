@@ -43,6 +43,24 @@ def login_view(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    try:
+        user_obj = User.objects.get(email=email)
+        if not user_obj.is_active:
+            logger.warning(f"[LOGIN] Inactive user attempted login: {email}")
+            return Response(
+                {"detail": "Your account has been deactivated. Contact your administrator."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except User.DoesNotExist:
+        logger.warning(f"[LOGIN] Failed login attempt for email: {email}")
+        return Response(
+            {"detail": "Invalid email or password."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
     user = authenticate(request, username=email, password=password)
 
     if user is None:
@@ -50,13 +68,6 @@ def login_view(request):
         return Response(
             {"detail": "Invalid email or password."},
             status=status.HTTP_401_UNAUTHORIZED
-        )
-
-    if not user.is_active:
-        logger.warning(f"[LOGIN] Inactive user attempted login: {email}")
-        return Response(
-            {"detail": "Your account has been deactivated. Contact your administrator."},
-            status=status.HTTP_403_FORBIDDEN
         )
 
     tokens = get_tokens_for_user(user)

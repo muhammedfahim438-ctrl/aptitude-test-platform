@@ -89,3 +89,81 @@ class AnswerKeyTimeGateTest(TestCase):
             HTTP_AUTHORIZATION=f'Bearer {token}'
         )
         self.assertEqual(response.status_code, 403)
+
+
+class LoginEndpointTest(TestCase):
+
+    def setUp(self):
+        self.active_student = User.objects.create_user(
+            email='active@test.com',
+            password='testpass123',
+            full_name='Active Student',
+            is_student=True,
+            is_active=True,
+        )
+        self.inactive_student = User.objects.create_user(
+            email='inactive@test.com',
+            password='testpass123',
+            full_name='Inactive Student',
+            is_student=True,
+            is_active=False,
+        )
+        self.url = '/api/auth/login/'
+
+    def test_login_success(self):
+        response = self.client.post(self.url, {
+            'email': 'active@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+
+    def test_login_wrong_password(self):
+        response = self.client.post(self.url, {
+            'email': 'active@test.com',
+            'password': 'wrongpassword',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+
+    def test_login_wrong_email(self):
+        response = self.client.post(self.url, {
+            'email': 'wrong@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+
+    def test_login_missing_email(self):
+        response = self.client.post(self.url, {
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_login_missing_password(self):
+        response = self.client.post(self.url, {
+            'email': 'active@test.com',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_login_invalid_email_format(self):
+        response = self.client.post(self.url, {
+            'email': 'notanemail',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_login_inactive_user(self):
+        response = self.client.post(self.url, {
+            'email': 'inactive@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_login_token_contains_role(self):
+        response = self.client.post(self.url, {
+            'email': 'active@test.com',
+            'password': 'testpass123',
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['user']['is_student'])
+        self.assertFalse(response.data['user']['is_teacher'])
