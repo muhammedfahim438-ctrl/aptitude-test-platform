@@ -1,4 +1,4 @@
-# pipeline/management/commands/aggregate_scores.py
+﻿# pipeline/management/commands/aggregate_scores.py
 import time
 from datetime import datetime
 
@@ -48,11 +48,10 @@ class Command(BaseCommand):
             )
         )
 
-        # Acceptance criteria: must complete for 2,000 records in <60s
         if elapsed > 60:
             self.stdout.write(
                 self.style.WARNING(
-                    f"⚠ Aggregation took {elapsed:.2f}s — exceeds the 60s "
+                    f"Aggregation took {elapsed:.2f}s - exceeds the 60s "
                     f"target for 2,000 records on Render's free tier."
                 )
             )
