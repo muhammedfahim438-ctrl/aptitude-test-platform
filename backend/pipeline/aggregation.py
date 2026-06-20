@@ -1,4 +1,4 @@
-﻿# pipeline/aggregation.py
+# pipeline/aggregation.py
 """
 Core scoring engine (US-F01).
 
