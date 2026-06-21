@@ -3,7 +3,12 @@ from django.urls import path
 from django.http import JsonResponse
 from accounts.views import login_view
 from rest_framework_simplejwt.views import TokenRefreshView
-from pipeline.views import admin_download_report, process_scheduled_deletions
+from pipeline.views import (
+    admin_download_report,
+    process_scheduled_deletions,
+    flush_weekly_leaderboard_view,
+    compute_weekly_leaderboard_view,
+)
 
 
 def health_check(request):
@@ -17,4 +22,6 @@ urlpatterns = [
     path('api/auth/refresh/', TokenRefreshView.as_view()),
     path('api/admin/download-report/<str:exam_date>/', admin_download_report),
     path('api/internal/process-deletions/', process_scheduled_deletions),
+    path('api/internal/flush-weekly-leaderboard/', flush_weekly_leaderboard_view),
+    path('api/internal/compute-weekly-leaderboard/', compute_weekly_leaderboard_view),
 ]

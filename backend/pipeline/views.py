@@ -74,3 +74,37 @@ def process_scheduled_deletions(request):
         deleted_count += 1
 
     return JsonResponse({'status': 'processed', 'deleted': deleted_count})
+
+
+@csrf_exempt
+def flush_weekly_leaderboard_view(request):
+    """
+    POST /api/internal/flush-weekly-leaderboard/
+    Cron: Tuesday 12:00 PM (36 hrs after Monday midnight). US-F04.
+    """
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    secret = request.headers.get('X-Cron-Secret', '')
+    if secret != settings.CRON_SECRET_KEY:
+        return HttpResponse(status=403)
+
+    from .models import WeeklyLeaderboard
+    deleted_count, _ = WeeklyLeaderboard.objects.all().delete()
+    return JsonResponse({'status': 'flushed', 'deleted': deleted_count})
+
+
+@csrf_exempt
+def compute_weekly_leaderboard_view(request):
+    """
+    POST /api/internal/compute-weekly-leaderboard/
+    Cron: Friday 11:59 PM. US-F04.
+    """
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    secret = request.headers.get('X-Cron-Secret', '')
+    if secret != settings.CRON_SECRET_KEY:
+        return HttpResponse(status=403)
+
+    from django.core.management import call_command
+    call_command('compute_weekly_leaderboard')
+    return JsonResponse({'status': 'computed'})
