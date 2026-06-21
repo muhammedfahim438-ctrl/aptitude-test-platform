@@ -1,34 +1,31 @@
 # core/settings/base.py
+# Owner: SHAHIN (Django init) + SREEKUTTAN (CORS, Redis, TIME_ZONE)
+
 import os
 from pathlib import Path
-from pathlib import Path
-import os
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-INSTALLED_APPS = [
 SECRET_KEY = os.environ.get('SECRET_KEY', 'local-dev-secret-key')
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
-DJANGO_APPS = [
+INSTALLED_APPS = [
+    # Django core
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     # Third-party
-    'corsheaders',          # REQUIRED for CorsMiddleware to function — without
-                             # this in INSTALLED_APPS, the middleware import
-                             # still works but signal handlers won't register.
+    'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
-
+    'rest_framework_simplejwt.token_blacklist',
     # Local apps
     'accounts',
     'exams',
@@ -37,23 +34,8 @@ DJANGO_APPS = [
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-]
-
-THIRD_PARTY_APPS = [
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',
-]
-
-LOCAL_APPS = [
-    'accounts',
-]
-
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
-
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',   # MUST be first — Constraint 4
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -83,8 +65,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-AUTH_USER_MODEL = 'accounts.CustomUser'
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -92,6 +72,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# IMPORTANT: exam time gates (10AM-2PM, 2PM-7PM) use server local time.
+# This MUST be Asia/Kolkata — Render defaults to UTC which offsets by 5:30 hrs.
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
@@ -120,20 +102,4 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
-}
-
-ROOT_URLCONF = 'core.urls'
-WSGI_APPLICATION = 'core.wsgi.application'
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_URL = '/media/'
-
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Kolkata'   # IMPORTANT: exam windows (10AM-2PM, 2PM-7PM) are
-                             # checked against server local time — this must
-                             # match the actual exam timezone, not UTC.
-USE_I18N = True
-USE_TZ = True
 }

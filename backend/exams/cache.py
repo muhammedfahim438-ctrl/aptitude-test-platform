@@ -1,15 +1,22 @@
 # exams/cache.py
+# Owner: SREEKUTTAN (US-R01)
+#
+# Local dev-il UPSTASH_REDIS_URL illenkil redis_client = None aakum.
+# Production-il Upstash URL undenkil normal-ayi work cheyyum.
+
 import json
 import os
-
 import redis
 
-redis_client = redis.from_url(os.environ['UPSTASH_REDIS_URL'], decode_responses=True)
+_redis_url = os.environ.get('UPSTASH_REDIS_URL')
+redis_client = redis.from_url(_redis_url, decode_responses=True) if _redis_url else None
+
 CACHE_TTL = 21600  # 6 hours
 
 
 def get_questions_cached(exam_date: str):
-    """Returns cached question list for exam_date, or None on cache miss."""
+    if not redis_client:
+        return None
     cache_key = f"exam:questions:{exam_date}"
     cached = redis_client.get(cache_key)
     if cached:
@@ -18,13 +25,10 @@ def get_questions_cached(exam_date: str):
 
 
 def warm_question_cache(exam_date: str):
-    """
-    Pre-loads questions into Redis ahead of the exam window.
-    Triggered by cron-job.org at 9:45 AM, 15 min before the 10 AM exam start.
-    Returns the count of questions loaded (0 if none found for that date).
-    """
+    """Pre-load questions into Redis at 9:45 AM before exam starts."""
+    if not redis_client:
+        return 0
     from exams.models import Question
-
     questions = list(Question.objects.filter(exam_date=exam_date).values(
         'id', 'text', 'option_a', 'option_b', 'option_c', 'option_d', 'image_url'
     ))
