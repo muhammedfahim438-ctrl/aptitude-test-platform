@@ -6,7 +6,7 @@ class DailyScore(models.Model):
     """
     Raw, finalized score for a single student on a single exam date.
     Written by the aggregation engine (pipeline/aggregation.py) via
-    bulk_create(update_conflicts=True) — re-running aggregation for the
+    bulk_create(update_conflicts=True) - re-running aggregation for the
     same date overwrites the score instead of creating duplicate rows.
 
     NOTE: This model intentionally does NOT store rank. Rank is a derived/
@@ -24,9 +24,6 @@ class DailyScore(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        # REQUIRED for bulk_create(update_conflicts=True, unique_fields=['student', 'exam_date']).
-        # Without this DB-level constraint, Postgres has no conflict target to upsert against
-        # and bulk_create will raise duplicate rows instead of updating them.
         constraints = [
             models.UniqueConstraint(
                 fields=['student', 'exam_date'],
@@ -42,10 +39,64 @@ class DailyScore(models.Model):
         return f"{self.student_id} | {self.exam_date} | score={self.score}"
 
 
+class DailyLeaderboard(models.Model):
+    """
+    Ranked leaderboard snapshot for a given exam date.
+    Flushed (deleted) by pipeline/signals.py whenever a NEW exam date's
+    first question is uploaded (US-F03), so stale rankings never persist
+    into a fresh exam cycle.
+    """
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='daily_leaderboard_entries',
+    )
+    exam_date = models.DateField()
+    score = models.PositiveSmallIntegerField()
+    rank = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['exam_date', 'rank']),
+        ]
+        ordering = ['exam_date', 'rank']
+
+    def __str__(self):
+        return f"{self.exam_date} | rank={self.rank} | {self.student_id}"
+
+
+class WeeklyLeaderboard(models.Model):
+    """
+    Ranked leaderboard aggregated across a week.
+    Flushed by US-F04's flush_weekly_leaderboard command/endpoint
+    (Tuesday 12 PM, 36 hrs after week start) and recomputed by
+    compute_weekly_leaderboard (Friday 11:59 PM).
+    """
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='weekly_leaderboard_entries',
+    )
+    week_start = models.DateField()
+    total_score = models.PositiveIntegerField()
+    rank = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['week_start', 'rank']),
+        ]
+        ordering = ['week_start', 'rank']
+
+    def __str__(self):
+        return f"Week of {self.week_start} | rank={self.rank} | {self.student_id}"
+
+
 class ScheduledFileDeletion(models.Model):
     """
     Persists file deletion schedule in the database.
-    Survives Render worker restarts — no threading.Timer required.
+    Survives Render worker restarts - no threading.Timer required.
     Processed by the `process_deletions` management command, triggered
     every 15 minutes via cron-job.org.
     """
@@ -58,7 +109,7 @@ class ScheduledFileDeletion(models.Model):
         indexes = [models.Index(fields=['delete_after', 'deleted'])]
 
     def __str__(self):
-        return f"{self.file_path} → delete after {self.delete_after}"
+        return f"{self.file_path} -> delete after {self.delete_after}"
 
 
 class ReportDownloadLog(models.Model):
