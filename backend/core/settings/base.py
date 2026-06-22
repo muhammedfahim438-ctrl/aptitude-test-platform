@@ -1,6 +1,5 @@
-# core/settings/base.py
-# Owner: SHAHIN (Django init) + SREEKUTTAN (CORS, Redis, TIME_ZONE)
-
+﻿# core/settings/base.py
+# Owner: SHAHIN (Django init) + SREEKUTTAN (CORS, Redis, TIME_ZONE) + FAHIM (CRON, pipeline)
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -8,25 +7,20 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'local-dev-secret-key')
-
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
 INSTALLED_APPS = [
-    # Django core
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Third-party
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    # Local apps
     'accounts',
     'exams',
     'pipeline',
@@ -35,7 +29,7 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',   # MUST be first — Constraint 4
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -72,8 +66,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# IMPORTANT: exam time gates (10AM-2PM, 2PM-7PM) use server local time.
-# This MUST be Asia/Kolkata — Render defaults to UTC which offsets by 5:30 hrs.
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
@@ -102,4 +94,31 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+CRON_SECRET_KEY = os.environ.get('CRON_SECRET_KEY', 'dev-cron-secret-change-me')
+UPSTASH_REDIS_URL = os.environ.get('UPSTASH_REDIS_URL', '')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {'handlers': ['console'], 'level': 'INFO', 'propagate': True},
+        'accounts': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'exams': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'core': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'pipeline': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
 }

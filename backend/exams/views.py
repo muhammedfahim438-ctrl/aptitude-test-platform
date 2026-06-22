@@ -1,9 +1,4 @@
-# exams/views.py
-# Owner: SREEKUTTAN
-# US-R01 · GetExamQuestionsView  — Redis cache-first question read
-# US-R01 · warm_cache_internal   — cron-triggered cache warm endpoint
-# US-R03 · SubmitAnswersView     — atomic, idempotent submission endpoint
-
+﻿# exams/views.py
 import logging
 from datetime import datetime, time
 
@@ -12,37 +7,59 @@ from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from core.permissions import IsStudentUser
+from core.permissions import IsStudentUser, IsAnswerWindowOpen
 from .cache import get_questions_cached, warm_question_cache
-from .models import Question, StudentSubmission
+from .models import AnswerKey, Question, StudentSubmission
 
 logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────
-# US-R01 · GetExamQuestionsView
-# ──────────────────────────────────────────────
+# --- Shahin (US-S04) ---
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAnswerWindowOpen])
+def get_answer_key(request):
+    exam_date = request.query_params.get('date', None)
+    if not exam_date:
+        exam_date = str(timezone.now().date())
+
+    try:
+        datetime.strptime(exam_date, '%Y-%m-%d')
+    except ValueError:
+        return Response(
+            {"detail": "Invalid date format. Use YYYY-MM-DD."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        answer_key = AnswerKey.objects.get(date=exam_date)
+    except AnswerKey.DoesNotExist:
+        return Response(
+            {"detail": f"No answer key found for date {exam_date}."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    logger.info(f"[ANSWER KEY] Accessed by {request.user.email} for {exam_date}")
+    return Response(
+        {
+            "date": str(answer_key.date),
+            "correct_answers": answer_key.correct_answers,
+            "opens_at": "14:00",
+            "closes_at": "19:00",
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+# --- Sreekuttan (US-R01) ---
 
 class GetExamQuestionsView(APIView):
-    """
-    GET /api/tests/questions/?date=YYYY-MM-DD
-
-    During the 10 AM–2 PM exam window, this serves from Redis ONLY
-    (Constraint 2 — hard rule, no exceptions). If Redis misses during
-    that window, we do NOT fall back to Postgres — with 2,000 students
-    hitting this endpoint simultaneously, an uncached DB fallback would
-    exhaust the PgBouncer pool instantly. We return 503 instead and let
-    the ops team (cron monitoring / manual warm-cache trigger) fix the
-    root cause.
-
-    Outside the exam window, a normal DB fallback + cache repopulate is
-    fine since traffic is low (teacher previews, off-hours checks, etc).
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -56,32 +73,19 @@ class GetExamQuestionsView(APIView):
         now = datetime.now().time()
         is_exam_window = time(10, 0) <= now <= time(14, 0)
 
-        # 1. Try Redis first — always.
         cached = get_questions_cached(exam_date)
         if cached is not None:
             logger.info(f"[CACHE HIT] questions for {exam_date}")
             return Response({'questions': cached, 'source': 'cache'})
 
-        # 2. Cache miss during exam window — DO NOT touch Postgres.
-        #    Fail loud and fast with 503 so the cron/alerting layer can
-        #    react, rather than silently hammering the DB pool.
         if is_exam_window:
-            logger.error(
-                f"[CACHE MISS DURING EXAM WINDOW] date={exam_date} — "
-                f"refusing DB fallback to protect PgBouncer pool. "
-                f"Trigger warm_question_cache manually or check cron logs."
-            )
+            logger.error(f"[CACHE MISS DURING EXAM WINDOW] date={exam_date}")
             return Response(
-                {
-                    'error': 'Questions are temporarily unavailable. Please retry shortly.',
-                    'retry_after_seconds': 5,
-                },
+                {'error': 'Questions are temporarily unavailable. Please retry shortly.', 'retry_after_seconds': 5},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
-        # 3. Outside exam window — safe to fall back to DB and repopulate,
-        #    since traffic here is low (teacher previews, off-hours checks).
-        logger.warning(f"[CACHE MISS] questions for {exam_date} — falling back to DB (off-window)")
+        logger.warning(f"[CACHE MISS] questions for {exam_date} - falling back to DB")
         count = warm_question_cache(exam_date)
         if count == 0:
             return Response(
@@ -93,22 +97,8 @@ class GetExamQuestionsView(APIView):
         return Response({'questions': questions, 'source': 'db_fallback'})
 
 
-# ──────────────────────────────────────────────
-# US-R01 · warm_cache_internal
-# ──────────────────────────────────────────────
-
 @csrf_exempt
 def warm_cache_internal(request):
-    """
-    POST /api/internal/warm-cache/
-
-    Hit by cron-job.org at 9:45 AM Mon-Fri (15 min before exam window).
-    Protected by X-Cron-Secret header, same pattern as Fahim's
-    process_deletions and flush_weekly_leaderboard endpoints.
-
-    Accepts an optional 'date' in the POST body; defaults to today
-    since this is meant to run unattended for "today's" exam.
-    """
     if request.method != 'POST':
         return HttpResponse(status=405)
 
@@ -124,37 +114,13 @@ def warm_cache_internal(request):
         logger.error(f"[WARM CACHE FAILED] date={exam_date}: {e}")
         return JsonResponse({'status': 'error', 'detail': str(e)}, status=500)
 
-    if count == 0:
-        logger.error(
-            f"[WARM CACHE] ZERO questions found for {exam_date}. "
-            f"Cache set to empty list. Check if admin uploaded today's "
-            f"question set!"
-        )
-        return JsonResponse(
-            {'status': 'warning', 'questions_loaded': 0, 'date': exam_date},
-            status=200
-        )
-
     logger.info(f"[WARM CACHE] {count} questions loaded for {exam_date}")
-    return JsonResponse(
-        {'status': 'ok', 'questions_loaded': count, 'date': exam_date},
-        status=200
-    )
+    return JsonResponse({'status': 'ok', 'questions_loaded': count, 'date': exam_date})
 
 
-# ──────────────────────────────────────────────
-# US-R03 · SubmitAnswersView
-# ──────────────────────────────────────────────
+# --- Sreekuttan (US-R03) ---
 
 class SubmitAnswersView(APIView):
-    """
-    POST /api/tests/submit/
-
-    Atomic, idempotent submission endpoint.
-    - transaction.atomic()  → no partial writes on DB error
-    - update_or_create      → safe to retry; no duplicate rows
-    - Server-side time gate → 409 if exam window closed
-    """
     permission_classes = [IsAuthenticated, IsStudentUser]
 
     def post(self, request):
@@ -167,7 +133,6 @@ class SubmitAnswersView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Server-side time gate — exam window is 10:00 AM to 2:00 PM IST
         now = datetime.now().time()
         if now > time(14, 0):
             return Response(
@@ -177,26 +142,18 @@ class SubmitAnswersView(APIView):
 
         try:
             with transaction.atomic():
-                # update_or_create = idempotent: safe to retry on network errors.
-                # If a student submits twice (auto-submit + manual submit), the
-                # second call overwrites answers — no duplicate rows created.
                 submission, created = StudentSubmission.objects.update_or_create(
                     student=request.user,
                     exam_date=exam_date_str,
                     defaults={'answers': answers},
                 )
-
-            logger.info(
-                f"[SUBMIT] {'Created' if created else 'Updated'} — "
-                f"student={request.user.id}, date={exam_date_str}"
-            )
+            logger.info(f"[SUBMIT] {'Created' if created else 'Updated'} - student={request.user.id}, date={exam_date_str}")
             return Response(
                 {'status': 'submitted', 'created': created},
                 status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
             )
-
         except Exception as e:
-            logger.error(f"[SUBMIT] Transaction failed — student={request.user.id}: {e}")
+            logger.error(f"[SUBMIT] Transaction failed - student={request.user.id}: {e}")
             return Response(
                 {'error': 'Submission failed. Please retry.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
