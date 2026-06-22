@@ -18,7 +18,6 @@ class Command(BaseCommand):
             delete_after__lte=timezone.now(),
             deleted=False,
         )
-
         count = 0
         for record in due:
             try:

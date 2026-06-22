@@ -1,14 +1,4 @@
-# pipeline/aggregation.py
-"""
-Core scoring engine (US-F01).
-
-Compares each StudentSubmission.answers against the AnswerKey.correct_answers
-for a given exam date, writes DailyScore rows, and exports a
-Master_Report_<date>.csv file to MEDIA_ROOT/exports/.
-
-Memory safety: uses .iterator(chunk_size=500) instead of .all() so that
-2,000 JSON submission rows never sit fully in RAM at once.
-"""
+﻿# pipeline/aggregation.py
 import csv
 import os
 

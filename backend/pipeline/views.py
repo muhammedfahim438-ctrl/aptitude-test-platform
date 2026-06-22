@@ -1,11 +1,4 @@
 ﻿# pipeline/views.py
-"""
-US-F02 - Admin Download + Process Deletions Endpoints
-
-No threading.Timer anywhere here. Deletion scheduling is DB-backed
-(ScheduledFileDeletion) and processed by a cron-triggered endpoint /
-management command, so it survives Render worker restarts.
-"""
 import os
 import logging
 from datetime import timedelta
@@ -15,7 +8,7 @@ from django.http import FileResponse, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import ScheduledFileDeletion, ReportDownloadLog
+from .models import ScheduledFileDeletion, ReportDownloadLog, WeeklyLeaderboard
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +27,6 @@ def admin_download_report(request, exam_date):
         downloaded_at=timezone.now(),
         scheduled_deletion_at=delete_at,
     )
-
     ScheduledFileDeletion.objects.create(
         file_path=filepath,
         delete_after=delete_at,
@@ -52,7 +44,6 @@ def admin_download_report(request, exam_date):
 def process_scheduled_deletions(request):
     if request.method != 'POST':
         return HttpResponse(status=405)
-
     secret = request.headers.get('X-Cron-Secret', '')
     if secret != settings.CRON_SECRET_KEY:
         return HttpResponse(status=403)
@@ -61,7 +52,6 @@ def process_scheduled_deletions(request):
         delete_after__lte=timezone.now(),
         deleted=False,
     )
-
     deleted_count = 0
     for record in due_records:
         try:
@@ -78,27 +68,18 @@ def process_scheduled_deletions(request):
 
 @csrf_exempt
 def flush_weekly_leaderboard_view(request):
-    """
-    POST /api/internal/flush-weekly-leaderboard/
-    Cron: Tuesday 12:00 PM (36 hrs after Monday midnight). US-F04.
-    """
     if request.method != 'POST':
         return HttpResponse(status=405)
     secret = request.headers.get('X-Cron-Secret', '')
     if secret != settings.CRON_SECRET_KEY:
         return HttpResponse(status=403)
 
-    from .models import WeeklyLeaderboard
     deleted_count, _ = WeeklyLeaderboard.objects.all().delete()
     return JsonResponse({'status': 'flushed', 'deleted': deleted_count})
 
 
 @csrf_exempt
 def compute_weekly_leaderboard_view(request):
-    """
-    POST /api/internal/compute-weekly-leaderboard/
-    Cron: Friday 11:59 PM. US-F04.
-    """
     if request.method != 'POST':
         return HttpResponse(status=405)
     secret = request.headers.get('X-Cron-Secret', '')

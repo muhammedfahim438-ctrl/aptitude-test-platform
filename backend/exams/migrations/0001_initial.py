@@ -27,6 +27,24 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
+            name='Question',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('exam_date', models.DateField()),
+                ('text', models.TextField()),
+                ('option_a', models.CharField(max_length=500)),
+                ('option_b', models.CharField(max_length=500)),
+                ('option_c', models.CharField(max_length=500)),
+                ('option_d', models.CharField(max_length=500)),
+                ('image_url', models.URLField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+            ],
+            options={
+                'ordering': ['exam_date', 'id'],
+                'indexes': [models.Index(fields=['exam_date'], name='exams_quest_exam_da_7ff7b5_idx')],
+            },
+        ),
+        migrations.CreateModel(
             name='StudentSubmission',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
