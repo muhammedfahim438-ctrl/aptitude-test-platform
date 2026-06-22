@@ -9,6 +9,7 @@ from pipeline.views import (
     flush_weekly_leaderboard_view,
     compute_weekly_leaderboard_view,
 )
+from exams.views import get_answer_key
 
 
 def health_check(request):
@@ -24,4 +25,5 @@ urlpatterns = [
     path('api/internal/process-deletions/', process_scheduled_deletions),
     path('api/internal/flush-weekly-leaderboard/', flush_weekly_leaderboard_view),
     path('api/internal/compute-weekly-leaderboard/', compute_weekly_leaderboard_view),
+    path('api/tests/answers/', get_answer_key),
 ]

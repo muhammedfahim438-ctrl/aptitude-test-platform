@@ -26,13 +26,39 @@ def get_tokens_for_user(user):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
+    email = request.data.get('email', '').strip()
+    password = request.data.get('password', '').strip()
 
     if not email or not password:
+        logger.warning("[LOGIN] Missing email or password in request")
         return Response(
             {"detail": "Email and password are required."},
             status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if '@' not in email:
+        logger.warning(f"[LOGIN] Invalid email format: {email}")
+        return Response(
+            {"detail": "Enter a valid email address."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    try:
+        user_obj = User.objects.get(email=email)
+        if not user_obj.is_active:
+            logger.warning(f"[LOGIN] Inactive user attempted login: {email}")
+            return Response(
+                {"detail": "Your account has been deactivated. Contact your administrator."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except User.DoesNotExist:
+        logger.warning(f"[LOGIN] Failed login attempt for email: {email}")
+        return Response(
+            {"detail": "Invalid email or password."},
+            status=status.HTTP_401_UNAUTHORIZED
         )
 
     user = authenticate(request, username=email, password=password)
@@ -44,14 +70,7 @@ def login_view(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    if not user.is_active:
-        return Response(
-            {"detail": "Your account has been deactivated."},
-            status=status.HTTP_403_FORBIDDEN
-        )
-
     tokens = get_tokens_for_user(user)
-
     logger.info(f"[LOGIN] Successful login for user: {email}")
 
     return Response(

@@ -17,7 +17,6 @@ class Question(models.Model):
     option_c = models.CharField(max_length=500)
     option_d = models.CharField(max_length=500)
     image_url = models.URLField(null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -31,15 +30,8 @@ class Question(models.Model):
 
 
 class AnswerKey(models.Model):
-    """
-    One AnswerKey row per exam date. Used by:
-    - pipeline/aggregation.py (US-F01) to score submissions
-    - core/permissions.py IsAnswerWindowOpen (US-S04) to gate student-facing reveal
-    """
     date = models.DateField(unique=True)
     correct_answers = models.JSONField()
-    # e.g. {"q1": "B", "q2": "A", "q3": "C", ...}
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -65,8 +57,6 @@ class StudentSubmission(models.Model):
     )
     exam_date = models.DateField()
     answers = models.JSONField()
-    # e.g. {"q1": "A", "q2": "B", "q3": "C", ...}
-
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
