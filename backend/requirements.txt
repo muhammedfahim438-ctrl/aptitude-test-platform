@@ -1,0 +1,24 @@
+﻿# requirements.txt
+# Core Django + REST framework
+Django==5.0.14
+djangorestframework==3.17.1
+djangorestframework_simplejwt==5.5.1
+
+# CORS (Constraint 4 - must stay first in MIDDLEWARE)
+django-cors-headers==4.9.0
+
+# Database - PgBouncer pooler URL parsing (Constraint 1)
+dj-database-url==3.1.2
+psycopg2-binary==2.9.12
+
+# Redis cache layer (US-R01)
+redis==8.0.0
+
+# WSGI server for Render deployment
+gunicorn==26.0.0
+
+# Environment/secrets loading (Constraint 7)
+python-dotenv==1.2.2
+
+# Load testing (US-R04, dev/test only - keep here so CI/teammates can run it)
+locust==2.44.3
