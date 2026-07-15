@@ -1,11 +1,12 @@
 ﻿# exams/views.py
 import logging
-from datetime import datetime, time
+from datetime import time
 
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
@@ -70,7 +71,7 @@ class GetExamQuestionsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        now = datetime.now().time()
+        now = timezone.now().time()
         is_exam_window = time(10, 0) <= now <= time(14, 0)
 
         cached = get_questions_cached(exam_date)
@@ -133,7 +134,7 @@ class SubmitAnswersView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        now = datetime.now().time()
+        now = timezone.now().time()
         if now > time(14, 0):
             return Response(
                 {'error': 'Exam window has closed. Submissions are no longer accepted.'},

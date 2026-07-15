@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from accounts.views import login_view
+from accounts.views import login_view, register_view, student_signin_view
 from rest_framework_simplejwt.views import TokenRefreshView
 from pipeline.views import (
     admin_download_report,
@@ -26,6 +26,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health'),
     path('api/auth/login/', login_view, name='login'),
+    path('api/auth/register/', register_view, name='register'),
+    path('api/auth/student-signin/', student_signin_view, name='student-signin'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('api/tests/questions/', GetExamQuestionsView.as_view(), name='get-exam-questions'),
     path('api/tests/answers/', get_answer_key, name='get-answer-key'),
