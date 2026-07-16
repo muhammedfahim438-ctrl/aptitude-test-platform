@@ -1,9 +1,11 @@
-from .base import *
-import dj_database_url
+﻿# core/settings/production.py
 import os
+from datetime import timedelta
+import dj_database_url
+from .base import *
 
 DEBUG = False
-
+SECRET_KEY = os.environ['SECRET_KEY']
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 DATABASES = {
@@ -15,22 +17,42 @@ DATABASES = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    os.environ.get('FRONTEND_URL', ''),
-    "http://localhost:5173",
+    origin.strip()
+    for origin in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+    if origin.strip()
 ]
-
 CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOW_METHODS = [
-    'GET',
-    'POST',
-    'OPTIONS',
-]
-
+CORS_ALLOW_METHODS = ['GET', 'POST', 'OPTIONS']
 CORS_ALLOW_HEADERS = [
-    'Content-Type',
-    'Authorization',
+    'accept',
+    'authorization',
+    'content-type',
+    'origin',
+    'x-csrftoken',
+    'x-cron-secret',
 ]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+CRON_SECRET_KEY = os.environ['CRON_SECRET_KEY']
+UPSTASH_REDIS_URL = os.environ['UPSTASH_REDIS_URL']
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True

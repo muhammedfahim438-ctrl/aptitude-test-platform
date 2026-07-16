@@ -1,0 +1,129 @@
+{
+  "info": {
+    "name": "Aptitude Test Platform API",
+    "description": "API collection for Aptitude Test Platform — covers auth, questions, submit, and health endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"student1@test.com\",\n  \"password\": \"testpass123\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "login", ""]
+        },
+        "description": "Returns access + refresh JWT tokens. Use access token in subsequent requests."
+      }
+    },
+    {
+      "name": "Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh\": \"<your_refresh_token>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/refresh/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "refresh", ""]
+        },
+        "description": "Returns a new access token using a valid refresh token."
+      }
+    },
+    {
+      "name": "Get Questions",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/tests/questions/?date={{exam_date}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "tests", "questions", ""],
+          "query": [
+            { "key": "date", "value": "{{exam_date}}" }
+          ]
+        },
+        "description": "Redis cache-first. During exam window (10AM-2PM): returns 503 on cache miss. Outside window: DB fallback."
+      }
+    },
+    {
+      "name": "Submit Answers",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"exam_date\": \"{{exam_date}}\",\n  \"answers\": {\n    \"q1\": \"A\",\n    \"q2\": \"B\",\n    \"q3\": \"C\",\n    \"q4\": \"D\",\n    \"q5\": \"A\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/tests/submit/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "tests", "submit", ""]
+        },
+        "description": "Atomic, idempotent submission. Returns 201 on create, 200 on re-submit, 409 if window closed."
+      }
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/health/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "health", ""]
+        },
+        "description": "Zero-auth, zero-DB keep-alive endpoint. Used by cron-job.org every 10 min."
+      }
+    },
+    {
+      "name": "Warm Cache (Internal)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Cron-Secret", "value": "{{cron_secret}}" },
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "date", "value": "{{exam_date}}" }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/internal/warm-cache/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "internal", "warm-cache", ""]
+        },
+        "description": "Cron-triggered at 9:45 AM. Protected by X-Cron-Secret header."
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "description": "Local dev. Change to Render URL for production." },
+    { "key": "access_token", "value": "", "description": "Paste access token from Login response." },
+    { "key": "exam_date", "value": "2026-06-21", "description": "Today's exam date in YYYY-MM-DD format." },
+    { "key": "cron_secret", "value": "your-cron-secret", "description": "CRON_SECRET_KEY from .env" }
+  ]
+}

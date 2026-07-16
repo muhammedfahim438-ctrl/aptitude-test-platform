@@ -1,3 +1,5 @@
+# accounts/serializers.py
+# TODO: Owner = SHAHIN (US-S03) — login/refresh serializers
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
