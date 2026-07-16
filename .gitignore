@@ -7,5 +7,3 @@ media/
 node_modules/
 dist/
 .env.local
-postman/
-.postman/
