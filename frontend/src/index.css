@@ -1,0 +1,112 @@
+/* ── Global Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Geist', sans-serif;
+  background-color: #f9f9f7;
+  color: #1c1c1b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Design Tokens ── */
+:root {
+  --primary:                 #ff6b00;
+  --primary-container:       #ffe8d6;
+  --on-primary-container:    #331500;
+  --secondary:               #2563eb;
+  --secondary-container:     #dbeafe;
+  --surface:                 #f9f9f7;
+  --surface-lowest:          #ffffff;
+  --surface-low:             #f4f4f2;
+  --surface-container:       #efefed;
+  --surface-high:            #eaeae8;
+  --on-surface:              #1c1c1b;
+  --on-surface-variant:      #4e473e;
+  --outline:                 #80776b;
+  --outline-variant:         #d2c5b6;
+  --error:                   #ba1a1a;
+  --error-container:         #ffdad6;
+  --radius:                  8px;
+  --radius-lg:               14px;
+}
+
+/* ── Material Symbols ── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* ── Spinner Animation ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin { animation: spin 1s linear infinite; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 10px; }
+
+/* ── Mobile Responsive Utilities ── */
+
+/* Login page card */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 20px !important;
+    margin: 0 12px !important;
+  }
+  .login-header {
+    padding-top: 36px !important;
+  }
+}
+
+/* Exam page options grid — 1 column on mobile */
+@media (max-width: 480px) {
+  .options-grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
+  .exam-main-mobile {
+    padding: 12px 12px 120px !important;
+  }
+}
+
+/* Leaderboard podium — compact on mobile */
+@media (max-width: 400px) {
+  .podium-name-mobile {
+    font-size: 10px !important;
+  }
+  .podium-score-mobile {
+    font-size: 10px !important;
+  }
+}
+
+/* Teacher pages — full width card on mobile */
+@media (max-width: 480px) {
+  .teacher-main-mobile {
+    padding: 12px !important;
+  }
+  .teacher-card-mobile {
+    padding: 18px !important;
+  }
+}
+
+/* Countdown chip text — shrink on very small screens */
+@media (max-width: 360px) {
+  .countdown-chip-mobile {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+}
