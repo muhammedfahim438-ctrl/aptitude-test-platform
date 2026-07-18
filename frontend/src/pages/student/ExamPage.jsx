@@ -1,299 +1,256 @@
-import { useState, useEffect } from 'react'
-import axiosClient from '../../api/client'
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
+import QuestionCard from '../../components/QuestionCard';
+import useExamCountdown from '../../hooks/useExamCountdown';
+import { usePersistedAnswers } from '../../hooks/usePersistedAnswers';
+import { examAPI } from '../../api/client';
 
-const C = {
-  primary: '#465aa3',
-  primaryContainer: '#EAEFFD',
-  onPrimaryContainer: '#1e347b',
-  surface: '#FBFBFF',
-  surfaceContainer: '#FFFFFF',
-  surfaceContainerLow: '#f5f3fa',
-  surfaceContainerHigh: '#e9e7ee',
-  surfaceContainerHighest: '#e3e1e8',
-  outline: '#E6E9F7',
-  outlineVariant: '#c5c5d2',
-  onSurface: '#34406E',
-  onSurfaceVariant: '#444651',
-  error: '#E2737A',
-  errorContainer: '#FCEAEC',
-  background: '#faf8ff',
+const orange = '#E8621A';
+
+function getExamEndTime(examDate) {
+  return new Date(`${examDate}T14:00:00`);
 }
 
-const Icon = ({ name, size = 24, fill = false, color, style = {} }) => (
-  <span className={`material-symbols-outlined${fill ? ' fill-icon' : ''}`}
-    style={{ fontSize: size, color, lineHeight: 1, ...style }}>{name}</span>
-)
+function getExamStartTime(examDate) {
+  return new Date(`${examDate}T10:00:00`);
+}
 
-export default function ExamPage({ onNavigate }) {
-  const [questions, setQuestions] = useState([])
-  const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState({})
-  // TEMPORARY: shortened to 10 seconds so you can see auto-submit fire quickly.
-  // Change back to 60 * 60 (1 hour) when you're done previewing.
-  const [timeLeft, setTimeLeft] = useState(10)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+export default function ExamPage() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [examDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  const today = new Date().toISOString().split('T')[0]
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // ===== TEMPORARY PREVIEW BLOCK =====
-    // This replaces the real API call with hardcoded fake questions,
-    // so you can see the whole exam flow without a working backend.
-    // Delete this block and restore the original fetchQuestions() call
-    // (see bottom of this file in comments) when you're done previewing.
-
-    // Simple inline SVG "mirror image" style diagrams, built as data URIs
-    // so no internet connection or external image host is needed for preview.
-    const mirrorImageSvg = `data:image/svg+xml;utf8,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
-        <rect width="400" height="200" fill="#f5f3fa"/>
-        <text x="60" y="110" font-size="80" font-family="Arial" fill="#34406E">F</text>
-        <line x1="200" y1="20" x2="200" y2="180" stroke="#465aa3" stroke-width="2" stroke-dasharray="6,4"/>
-        <text x="270" y="110" font-size="80" font-family="Arial" fill="#465aa3" transform="scale(-1,1) translate(-580,0)">F</text>
-        <text x="150" y="30" font-size="14" font-family="Arial" fill="#444651">Object</text>
-        <text x="330" y="30" font-size="14" font-family="Arial" fill="#444651">Mirror</text>
-      </svg>
-    `)}`
-
-    const rotatedShapeSvg = `data:image/svg+xml;utf8,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
-        <rect width="400" height="200" fill="#f5f3fa"/>
-        <polygon points="80,40 140,40 140,100 180,100 110,160 40,100 80,100" fill="#465aa3"/>
-        <text x="200" y="105" font-size="28" font-family="Arial" fill="#34406E">rotated 90° = ?</text>
-      </svg>
-    `)}`
-
-    const fakeQuestions = [
-      {
-        id: 1,
-        text: 'Q1 (Mirror Image): Which option correctly shows the mirror image of the letter "F" placed to the left of a vertical mirror line?',
-        option_a: 'Image A (flipped correctly)',
-        option_b: 'Image B (upside down)',
-        option_c: 'Image C (unchanged)',
-        option_d: 'Image D (rotated 90°)',
-        image_url: mirrorImageSvg,
-      },
-      {
-        id: 2,
-        text: 'Q2 (Figure Rotation): The shape below is rotated 90° clockwise. Which of the following matches the result?',
-        option_a: 'Option A',
-        option_b: 'Option B',
-        option_c: 'Option C',
-        option_d: 'Option D',
-        image_url: rotatedShapeSvg,
-      },
-      {
-        id: 3,
-        text: 'Q3: What is 3 + 3?',
-        option_a: '5',
-        option_b: '6',
-        option_c: '7',
-        option_d: '8',
-        image_url: null,
-      },
-      {
-        id: 4,
-        text: 'Q4 (Broken image test): This question has an intentionally broken image URL to test the onError fallback.',
-        option_a: 'A',
-        option_b: 'B',
-        option_c: 'C',
-        option_d: 'D',
-        image_url: 'https://example.com/this-image-does-not-exist.png',
-      },
-      {
-        id: 5,
-        text: 'Q5: What is 5 + 5?',
-        option_a: '9',
-        option_b: '10',
-        option_c: '11',
-        option_d: '12',
-        image_url: null,
-      },
-    ]
-
-    setQuestions(fakeQuestions)
-    setLoading(false)
-    // ===== END TEMPORARY PREVIEW BLOCK =====
-
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    const saved = localStorage.getItem(`exam_answers_${user.id}_${today}`)
-    if (saved) {
-      try { setAnswers(JSON.parse(atob(saved))) } catch { }
-    }
-  }, [])
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setTimeLeft(s => {
-        if (s <= 1) { clearInterval(t); handleAutoSubmit(); return 0 }
-        return s - 1
-      })
-    }, 1000)
-    return () => clearInterval(t)
-  }, [answers])
-
-  const saveAnswer = (questionId, answer) => {
-    const updated = { ...answers, [questionId]: answer }
-    setAnswers(updated)
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    localStorage.setItem(`exam_answers_${user.id}_${today}`, btoa(JSON.stringify(updated)))
-  }
-
-  const handleAutoSubmit = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
     try {
-      await axiosClient.post('/api/tests/submit/', { exam_date: today, answers })
-      onNavigate('success')
-    } catch { onNavigate('submit') }
-  }
+      const decoded = jwtDecode(token);
+      setUser(decoded);
+    } catch {
+      setUser(null);
+    }
+  }, []);
 
-  const hh = String(Math.floor(timeLeft / 3600)).padStart(2, '0')
-  const mm = String(Math.floor((timeLeft % 3600) / 60)).padStart(2, '0')
-  const ss = String(timeLeft % 60).padStart(2, '0')
+  const userId = user?.user_id ?? user?.sub ?? 'anonymous';
+  const { answers, saveAnswer, clearAnswers } = usePersistedAnswers(userId, examDate);
 
-  const optLabels = ['A', 'B', 'C', 'D']
-  const answered = Object.keys(answers).length
-  const progress = questions.length > 0 ? ((current) / questions.length) * 100 : 0
-  const q = questions[current]
+  const now = new Date();
+  const examStart = getExamStartTime(examDate);
+  const examEnd = getExamEndTime(examDate);
+  const isBeforeWindow = now < examStart;
+  const isAfterWindow = now > examEnd;
+  const isReadOnly = isAfterWindow || submitted;
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.background }}>
-      <div style={{ textAlign: 'center' }}>
-        <Icon name="sync" size={40} color={C.primary} style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ fontFamily: 'Inter', fontSize: 15, color: C.onSurfaceVariant, marginTop: 12 }}>Loading questions...</p>
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchQuestions() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await examAPI.getQuestions(examDate);
+        if (!cancelled) {
+          setQuestions(res.data.questions || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const msg =
+            err.response?.status === 503
+              ? 'Questions are loading, please wait a moment and refresh.'
+              : err.response?.data?.error || 'Failed to load questions. Please refresh.';
+          setError(msg);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    if (!isBeforeWindow) fetchQuestions();
+    else setLoading(false);
+    return () => { cancelled = true; };
+  }, [examDate, isBeforeWindow]);
+
+  const handleSubmit = useCallback(
+    async (isAutoSubmit = false) => {
+      if (submitted) return;
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const attempt = async (retriesLeft) => {
+        try {
+          await examAPI.submitAnswers(examDate, answers);
+          setSubmitted(true);
+          clearAnswers();
+        } catch (err) {
+          if (retriesLeft > 0) {
+            await new Promise((r) => setTimeout(r, 2000));
+            return attempt(retriesLeft - 1);
+          }
+          setSubmitError(
+            isAutoSubmit
+              ? 'Auto-submit failed after 3 attempts. Please submit manually if possible.'
+              : 'Submission failed. Please try again.'
+          );
+        }
+      };
+      await attempt(isAutoSubmit ? 3 : 0);
+      setSubmitting(false);
+    },
+    [examDate, answers, submitted, clearAnswers]
+  );
+
+  const handleAutoSubmit = useCallback(() => {
+    handleSubmit(true);
+  }, [handleSubmit]);
+
+  const timerDisplay = useExamCountdown(examEnd, handleAutoSubmit);
+  const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
+
+  if (isBeforeWindow && !loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', background: '#f9f9f7',
+        padding: 24, fontFamily: 'Inter, sans-serif', gap: 16,
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#465aa3' }}>
+          schedule
+        </span>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1c1c1b' }}>Exam not started yet</h2>
+        <p style={{ fontSize: 14, color: '#6b7280', textAlign: 'center' }}>
+          The exam window opens at 10:00 AM IST.<br />
+          Please come back then.
+        </p>
       </div>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
-
-  if (error || questions.length === 0) return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.background, padding: 24, maxWidth: 480, margin: '0 auto' }}>
-      <Icon name="assignment_late" size={48} color={C.onSurfaceVariant} />
-      <p style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, color: C.onSurface, marginTop: 16, textAlign: 'center' }}>{error || 'No questions available today'}</p>
-      <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.onSurfaceVariant, marginTop: 8, textAlign: 'center' }}>Questions are available between 10:00 AM and 2:00 PM</p>
-      <button onClick={() => onNavigate('dashboard')} style={{ marginTop: 24, padding: '12px 32px', background: C.primary, color: '#fff', border: 'none', borderRadius: 9999, fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Go Back</button>
-    </div>
-  )
+    );
+  }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, maxWidth: 480, margin: '0 auto' }}>
-
-      {/* Header */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: C.surface, boxShadow: '0 1px 8px rgba(70,90,163,0.08)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{
+      minHeight: '100vh', background: '#f9f9f7',
+      fontFamily: 'Inter, sans-serif',
+    }}>
+      {/* Sticky Header */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 40,
+        background: '#fff', borderBottom: '1px solid #e5e7eb',
+        padding: '12px 16px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => onNavigate('assessment-details')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: '50%', display: 'flex' }}>
-            <Icon name="arrow_back" color={C.primary} size={22} />
-          </button>
-          <p style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, color: C.primary, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Quantitative Aptitude</p>
+          <span style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: '#465aa3' }}>
+            Aptitude Test
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.errorContainer, borderRadius: 9999, padding: '6px 12px', border: `1px solid ${C.error}30` }}>
-            <Icon name="timer" size={18} color={C.error} />
-            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 14, fontWeight: 500, color: C.error }}>{hh}:{mm}:{ss}</span>
-          </div>
-          <button onClick={() => onNavigate('submit')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-            <Icon name="more_vert" color={C.onSurface} />
-          </button>
-        </div>
-      </header>
-
-      <main style={{ flex: 1, padding: '20px 16px 100px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-        {/* Progress */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, color: C.onSurface }}>Question {current + 1} of {questions.length}</span>
-          <div style={{ height: 6, background: C.outline, borderRadius: 9999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: C.primary, borderRadius: 9999, transition: 'width 0.4s ease' }} />
-          </div>
-          <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.onSurfaceVariant, fontWeight: 500 }}>{answered} of {questions.length} Questions Answered</p>
-        </div>
-
-        {/* Question Card */}
-        <div style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 20, padding: 20, boxShadow: '0 4px 20px rgba(70,90,163,0.08)' }}>
-          <p style={{ fontFamily: 'Inter', fontSize: 16, color: C.onSurface, lineHeight: 1.6, marginBottom: 20, fontWeight: 500 }}>{q?.text}</p>
-
-          {q?.image_url && (
-            <img src={q.image_url} alt="Question" style={{ width: '100%', borderRadius: 12, marginBottom: 16, objectFit: 'contain' }}
-              onError={e => { e.target.style.display = 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{
+            fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 500,
+            color: '#6b7280',
+          }}>
+            {answeredCount}/{questions.length}
+          </span>
+          {!isAfterWindow && !submitted && (
+            <span style={{
+              fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 500,
+              color: '#E2737A', background: '#FCEAEC',
+              padding: '4px 10px', borderRadius: 999,
+            }}>
+              {timerDisplay}
+            </span>
           )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[q?.option_a, q?.option_b, q?.option_c, q?.option_d].map((opt, i) => {
-              if (!opt) return null
-              const selected = answers[q.id] === optLabels[i]
-              return (
-                <div
-                  key={i}
-                  onClick={() => saveAnswer(q.id, optLabels[i])}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', border: `2px solid ${selected ? C.primary : C.outline}`, background: selected ? `${C.primaryContainer}50` : 'transparent', borderRadius: 16, cursor: 'pointer', transition: 'all 0.2s' }}
-                >
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${selected ? C.primary : C.outlineVariant}`, background: selected ? C.primary : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
-                    {selected && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fff' }} />}
-                  </div>
-                  <span style={{ fontFamily: 'Inter', fontSize: 15, color: selected ? C.onPrimaryContainer : C.onSurface, fontWeight: selected ? 600 : 400, flex: 1 }}>{opt}</span>
-                  {selected && <Icon name="check_circle" size={20} fill color={C.primary} />}
-                </div>
-              )
-            })}
-          </div>
         </div>
-      </main>
+      </div>
 
-      {/* Footer */}
-      <footer style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: C.surfaceContainerLow, borderTop: `1px solid ${C.outline}`, padding: '12px 16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <button
-          disabled={current === 0}
-          onClick={() => setCurrent(c => c - 1)}
-          style={{ flex: 1, background: C.surfaceContainerHighest, color: C.primary, border: 'none', borderRadius: 9999, padding: '14px 24px', fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, cursor: current === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: current === 0 ? 0.5 : 1, transition: 'all 0.2s' }}
-        >
-          <Icon name="chevron_left" size={20} color={C.primary} />
-          Previous
-        </button>
-        {current < questions.length - 1 ? (
-          <button
-            onClick={() => setCurrent(c => c + 1)}
-            style={{ flex: 1, background: C.primary, color: '#fff', border: 'none', borderRadius: 9999, padding: '14px 24px', fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}
-          >
-            Next
-            <Icon name="chevron_right" size={20} color="#fff" />
-          </button>
-        ) : (
-          <button
-            onClick={() => onNavigate('submit')}
-            style={{ flex: 1, background: C.primary, color: '#fff', border: 'none', borderRadius: 9999, padding: '14px 24px', fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            Review
-            <Icon name="checklist" size={20} color="#fff" />
-          </button>
+      {/* Main Content */}
+      <div style={{ padding: '16px 16px 120px', maxWidth: 600, margin: '0 auto' }}>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
+            Loading questions...
+          </div>
         )}
-      </footer>
 
-      <style>{`.fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        {error && (
+          <div style={{
+            background: '#FCEAEC', border: '1px solid #E2737A30', borderRadius: 12,
+            padding: 16, marginBottom: 16, color: '#93000a', fontSize: 14,
+          }}>
+            {error}
+          </div>
+        )}
+
+        {submitted && (
+          <div style={{
+            background: '#E5FAF1', border: '1px solid #116b5130', borderRadius: 12,
+            padding: 20, marginBottom: 20, textAlign: 'center',
+          }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#116b51' }}>
+              check_circle
+            </span>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1c1c1b', marginTop: 8 }}>
+              Exam Submitted!
+            </h3>
+            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+              Your answers have been recorded.
+            </p>
+          </div>
+        )}
+
+        {submitError && (
+          <div style={{
+            background: '#FCEAEC', border: '1px solid #E2737A30', borderRadius: 12,
+            padding: 14, marginBottom: 16, color: '#93000a', fontSize: 13,
+          }}>
+            {submitError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {questions.map((q) => (
+            <QuestionCard
+              key={q.id}
+              id={q.id}
+              text={q.text}
+              option_a={q.option_a}
+              option_b={q.option_b}
+              option_c={q.option_c}
+              option_d={q.option_d}
+              image_url={q.image_url}
+              selected={answers[`q${q.id}`] || null}
+              onSelect={isReadOnly ? () => {} : (qid, label) => saveAnswer(`q${qid}`, label)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      {!isAfterWindow && !submitted && questions.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: '#fff', borderTop: '1px solid #e5e7eb',
+          padding: '12px 16px 24px', display: 'flex', justifyContent: 'center',
+        }}>
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={submitting}
+            style={{
+              background: submitting ? '#8CA0EE' : '#465aa3',
+              color: '#fff', border: 'none', borderRadius: 999,
+              padding: '14px 48px', fontFamily: 'Space Grotesk',
+              fontSize: 15, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 16px rgba(70,90,163,0.25)',
+            }}
+          >
+            {submitting ? 'Submitting...' : 'Submit Exam'}
+          </button>
+        </div>
+      )}
     </div>
-  )
+  );
 }
-
-/* ============================================================
-   HOW TO REVERT TO REAL BACKEND DATA (once you're done previewing):
-
-   1. In the first useEffect, DELETE the "TEMPORARY PREVIEW BLOCK"
-      (the fakeQuestions array + setQuestions/setLoading lines)
-      and REPLACE it with this original code:
-
-      const fetchQuestions = async () => {
-        try {
-          const res = await axiosClient.get(`/api/tests/questions/?date=${today}`)
-          setQuestions(res.data.questions || [])
-        } catch (err) {
-          setError('Failed to load questions. Please try again.')
-        } finally {
-          setLoading(false)
-        }
-      }
-      fetchQuestions()
-
-   2. Change:
-      const [timeLeft, setTimeLeft] = useState(10)
-      back to:
-      const [timeLeft, setTimeLeft] = useState(60 * 60)
-   ============================================================ */

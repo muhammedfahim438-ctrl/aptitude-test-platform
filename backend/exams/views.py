@@ -1,27 +1,26 @@
-﻿# exams/views.py
+﻿import json
 import logging
-from datetime import time
+from datetime import datetime, time
 
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
-from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 
-from core.permissions import IsStudentUser, IsAnswerWindowOpen
+from core.permissions import IsStudentUser, IsAnswerWindowOpen, IsTeacherUser
 from .cache import get_questions_cached, warm_question_cache
 from .models import AnswerKey, Question, StudentSubmission
+from .serializers import AdminQuestionSerializer
 
 logger = logging.getLogger(__name__)
 
-
-# --- Shahin (US-S04) ---
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAnswerWindowOpen])
@@ -57,8 +56,6 @@ def get_answer_key(request):
         status=status.HTTP_200_OK
     )
 
-
-# --- Sreekuttan (US-R01) ---
 
 class GetExamQuestionsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -119,8 +116,6 @@ def warm_cache_internal(request):
     return JsonResponse({'status': 'ok', 'questions_loaded': count, 'date': exam_date})
 
 
-# --- Sreekuttan (US-R03) ---
-
 class SubmitAnswersView(APIView):
     permission_classes = [IsAuthenticated, IsStudentUser]
 
@@ -159,3 +154,155 @@ class SubmitAnswersView(APIView):
                 {'error': 'Submission failed. Please retry.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class UploadQuestionsView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherUser]
+    parser_classes = [MultiPartParser, FormParser]
+
+    VALID_ANSWERS = {'A', 'B', 'C', 'D'}
+    REQUIRED_FIELDS = ('text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer')
+
+    def post(self, request):
+        exam_date_str = request.data.get('date')
+        questions_raw = request.data.get('questions')
+
+        if not exam_date_str:
+            return Response(
+                {'error': 'date is required (YYYY-MM-DD).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            datetime.strptime(exam_date_str, '%Y-%m-%d')
+        except ValueError:
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not questions_raw:
+            return Response(
+                {'error': 'questions is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            questions_payload = json.loads(questions_raw)
+        except (TypeError, json.JSONDecodeError):
+            return Response(
+                {'error': 'questions must be valid JSON.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not isinstance(questions_payload, list) or len(questions_payload) == 0:
+            return Response(
+                {'error': 'questions must be a non-empty list.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        for idx, q in enumerate(questions_payload, start=1):
+            missing = [f for f in self.REQUIRED_FIELDS if not str(q.get(f, '')).strip()]
+            if missing:
+                return Response(
+                    {'error': f'Question {idx} is missing required fields: {missing}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            correct = str(q.get('correct_answer')).strip().upper()
+            if correct not in self.VALID_ANSWERS:
+                return Response(
+                    {'error': f'Question {idx} has invalid correct_answer "{q.get("correct_answer")}". Must be A, B, C, or D.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        try:
+            with transaction.atomic():
+                created_questions = []
+                correct_answers = {}
+
+                for idx, q in enumerate(questions_payload, start=1):
+                    image_file = request.FILES.get(f'image_{idx - 1}')
+
+                    question = Question(
+                        exam_date=exam_date_str,
+                        text=q['text'],
+                        option_a=q['option_a'],
+                        option_b=q['option_b'],
+                        option_c=q['option_c'],
+                        option_d=q['option_d'],
+                        retake_allowed=bool(q.get('retake_allowed', True)),
+                    )
+                    if image_file:
+                        question.image = image_file
+
+                    question.save()
+                    created_questions.append(question)
+
+                    correct_answers[f'q{idx}'] = str(q['correct_answer']).strip().upper()
+
+                answer_key, ak_created = AnswerKey.objects.update_or_create(
+                    date=exam_date_str,
+                    defaults={'correct_answers': correct_answers},
+                )
+
+            logger.info(
+                f"[UPLOAD] {request.user.email} uploaded {len(created_questions)} "
+                f"questions for {exam_date_str} "
+                f"(AnswerKey {'created' if ak_created else 'updated'})"
+            )
+
+            return Response(
+                {
+                    'status': 'uploaded',
+                    'exam_date': exam_date_str,
+                    'questions_created': len(created_questions),
+                    'answer_key_updated': True,
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            logger.error(f"[UPLOAD] Failed for {request.user.email}, date={exam_date_str}: {e}")
+            return Response(
+                {'error': 'Question upload failed. Please retry.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminQuestionListView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherUser]
+
+    def get(self, request):
+        queryset = Question.objects.all()
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(text__icontains=search)
+
+        exam_date = request.query_params.get('date')
+        if exam_date:
+            queryset = queryset.filter(exam_date=exam_date)
+
+        serializer = AdminQuestionSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AdminQuestionDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherUser]
+
+    def get(self, request, question_id):
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminQuestionSerializer(question)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, question_id):
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+        question.delete()
+        logger.info(f"[DELETE] Question {question_id} deleted by {request.user.email}")
+        return Response(status=status.HTTP_204_NO_CONTENT)

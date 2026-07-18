@@ -1,38 +1,107 @@
-import { useState, useCallback } from 'react'
-import LoginPage from '../pages/Login'
-import Register from '../pages/student/Register'
-import Dashboard from '../pages/student/Dashboard'
-import AssessmentDetails from '../pages/student/AssessmentDetails'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from './ProtectedRoute'
+
+import Login from '../pages/Login'
+import AdminLogin from '../pages/admin/AdminLogin'
+import AdminDashboard from '../pages/admin/AdminDashboard'
+import AdminQuestions from '../pages/admin/AdminQuestions'
+import TeacherUpload from '../pages/admin/TeacherUpload'
+import PlatformAnalytics from '../pages/admin/PlatformAnalytics'
+import RankPage from '../pages/admin/RankPage'
+import TeacherReports from '../pages/admin/TeacherReports'
 import ExamPage from '../pages/student/ExamPage'
-import SubmitPage from '../pages/student/SubmitPage'
-import ProcessingPage from '../pages/student/ProcessingPage'
-import SuccessPage from '../pages/student/SuccessPage'
-import AnswerReview from '../pages/student/AnswerReview'
+import LeaderboardPage from '../pages/student/LeaderboardPage'
+import Register from '../pages/student/Register'
 
 export default function AppRouter() {
-  const [page, setPage] = useState('login')
-  const [examData, setExamData] = useState(null)
-
-  const navigate = useCallback((p, data = null) => {
-    setPage(p)
-    if (data) setExamData(data)
-  }, [])
-
-  const pages = {
-    login: <LoginPage onLogin={() => navigate('dashboard')} onNavigate={navigate} />,
-    register: <Register onNavigate={navigate} />,
-    dashboard: <Dashboard onNavigate={navigate} />,
-    'assessment-details': <AssessmentDetails onNavigate={navigate} />,
-    exam: <ExamPage onNavigate={navigate} />,
-    submit: <SubmitPage onNavigate={navigate} />,
-    processing: <ProcessingPage onNavigate={navigate} />,
-    success: <SuccessPage onNavigate={navigate} />,
-    'answer-review': <AnswerReview onNavigate={navigate} />,
-  }
-
   return (
-    <div style={{ background: '#e3e1e8', minHeight: '100vh' }}>
-      {pages[page] || pages['login']}
-    </div>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        <Route
+          path="/student/exam"
+          element={
+            <ProtectedRoute requiredRole="is_student">
+              <ExamPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/leaderboard"
+          element={
+            <ProtectedRoute requiredRole="is_student">
+              <LeaderboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/questions"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <AdminQuestions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/questions/upload"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <TeacherUpload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/questions/date/:examDate"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <AdminQuestions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/stats"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <PlatformAnalytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/rank"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <RankPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <ProtectedRoute requiredRole="is_teacher">
+              <TeacherReports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

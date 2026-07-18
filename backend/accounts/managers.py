@@ -1,2 +1,1 @@
-# accounts/managers.py
-# TODO: Owner = SHAHIN (US-S02) — CustomUserManager (create_user, create_superuser)
+# accounts/managers.py - CustomUserManager is defined in models.py

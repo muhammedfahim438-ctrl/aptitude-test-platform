@@ -11,6 +11,8 @@ class Question(models.Model):
     option_c = models.CharField(max_length=500)
     option_d = models.CharField(max_length=500)
     image_url = models.URLField(null=True, blank=True)
+    image = models.FileField(upload_to='questions/images/', null=True, blank=True)
+    retake_allowed = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

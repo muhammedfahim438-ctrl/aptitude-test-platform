@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import datetime, time
 
 from django.utils import timezone
 from rest_framework.permissions import BasePermission
@@ -26,4 +26,5 @@ class IsAnswerWindowOpen(BasePermission):
     message = "Answer key is not available at this time."
 
     def has_permission(self, request, view):
-        return True
+        now = datetime.now().time()
+        return time(14, 0) <= now <= time(19, 0)
