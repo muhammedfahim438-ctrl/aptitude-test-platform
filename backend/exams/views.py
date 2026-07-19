@@ -17,7 +17,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from core.permissions import IsStudentUser, IsAnswerWindowOpen, IsTeacherUser
 from .cache import get_questions_cached, warm_question_cache
 from .models import AnswerKey, Question, StudentSubmission
-from .serializers import AdminQuestionSerializer
+from .serializers import AdminQuestionSerializer, AdminQuestionUpdateSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +239,18 @@ class UploadQuestionsView(APIView):
                 for idx, q in enumerate(questions_payload, start=1):
                     image_file = request.FILES.get(f'image_{idx - 1}')
 
+                    if image_file:
+                        if not image_file.content_type.startswith('image/'):
+                            return Response(
+                                {'error': f'Question {idx}: Only image files are allowed.'},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        if image_file.size > 5 * 1024 * 1024:
+                            return Response(
+                                {'error': f'Question {idx}: Image must be under 5MB.'},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+
                     question = Question(
                         exam_date=exam_date_str,
                         text=q['text'],
@@ -313,6 +325,28 @@ class AdminQuestionDetailView(APIView):
             return Response({'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = AdminQuestionSerializer(question)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, question_id):
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminQuestionUpdateSerializer(question, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        logger.info(f"[PATCH] Question {question_id} updated by {request.user.email}")
+        return Response(AdminQuestionSerializer(question).data, status=status.HTTP_200_OK)
+
+    def put(self, request, question_id):
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminQuestionUpdateSerializer(question, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        logger.info(f"[PUT] Question {question_id} updated by {request.user.email}")
+        return Response(AdminQuestionSerializer(question).data, status=status.HTTP_200_OK)
 
     def delete(self, request, question_id):
         try:

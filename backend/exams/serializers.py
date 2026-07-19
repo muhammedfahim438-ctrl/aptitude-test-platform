@@ -18,6 +18,7 @@ class AdminQuestionSerializer(serializers.ModelSerializer):
             'option_a', 'option_b', 'option_c', 'option_d',
             'image_url', 'retake_allowed', 'created_at',
         ]
+        read_only_fields = ['id', 'created_at']
 
     def get_image_url(self, obj):
         if obj.image_url:
@@ -28,6 +29,15 @@ class AdminQuestionSerializer(serializers.ModelSerializer):
             except ValueError:
                 return None
         return None
+
+
+class AdminQuestionUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = [
+            'text', 'option_a', 'option_b', 'option_c', 'option_d',
+            'image_url', 'retake_allowed',
+        ]
 
 
 class StudentSubmissionSerializer(serializers.ModelSerializer):

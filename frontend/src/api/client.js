@@ -110,14 +110,17 @@ export const adminAPI = {
   deleteQuestion: (id) =>
     axiosClient.delete(`/api/admin/questions/${id}/`),
 
-  getRankings: (top = 10, period = 'weekly') =>
-    axiosClient.get(`/api/admin/rankings/?top=${top}&period=${period}`),
+  updateQuestion: (id, data) =>
+    axiosClient.patch(`/api/admin/questions/${id}/`, data),
 
-  getReports: (from, to, range) => {
+  getRankings: (period = 'weekly', top = 10) =>
+    axiosClient.get(`/api/admin/rankings/?period=${period}&top=${top}`),
+
+  getReports: (range, from, to) => {
     const params = new URLSearchParams()
+    if (range) params.append('range', range)
     if (from) params.append('from', from)
     if (to) params.append('to', to)
-    if (range) params.append('range', range)
     return axiosClient.get(`/api/admin/reports/?${params.toString()}`)
   },
 

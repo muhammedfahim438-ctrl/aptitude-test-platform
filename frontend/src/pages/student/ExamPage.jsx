@@ -55,9 +55,13 @@ export default function ExamPage() {
         if (!cancelled) setQuestions(res.data.questions || [])
       } catch (err) {
         if (!cancelled) {
-          setError(err.response?.status === 503
-            ? 'Questions are loading, please wait a moment and refresh.'
-            : err.response?.data?.error || 'Failed to load questions. Please refresh.')
+          setError(
+            err.response?.status === 404
+            ? 'No questions available for today. Please check back later.'
+            : err.response?.status === 503
+                ? 'Questions are loading, please wait a moment and refresh.'
+                : err.response?.data?.error || 'Failed to load questions. Please refresh.'
+          )
         }
       } finally {
         if (!cancelled) setLoading(false)

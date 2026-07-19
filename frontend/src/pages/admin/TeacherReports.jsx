@@ -15,7 +15,7 @@ export default function TeacherReports() {
       setLoading(true)
       try {
         const res = await adminAPI.getReports(selectedRange)
-        const items = res.data.results || res.data || []
+        const items = res.data.student_performance || res.data.results || []
         setReports(items)
       } catch {
         // silent

@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ReactImageCrop from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
 import { adminAPI } from '../../api/client'
 
 function ToggleSwitch({ checked, onChange }) {
@@ -21,6 +23,65 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+const DEFAULT_CROP = { unit: '%', x: 10, y: 10, width: 80, height: 80 }
+
+function ImageCropperModal({ src, crop, setCrop, onComplete, onApply, onCancel }) {
+  const imgRef = useRef(null)
+
+  const handleApply = useCallback(async () => {
+    if (!imgRef.current) return
+    const image = imgRef.current
+    const canvas = document.createElement('canvas')
+    const scaleX = image.naturalWidth / image.width
+    const scaleY = image.naturalHeight / image.height
+
+    const pixelCrop = {
+      x: (crop.x / 100) * image.naturalWidth,
+      y: (crop.y / 100) * image.naturalHeight,
+      width: (crop.width / 100) * image.naturalWidth,
+      height: (crop.height / 100) * image.naturalHeight,
+    }
+
+    canvas.width = pixelCrop.width
+    canvas.height = pixelCrop.height
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(
+      image,
+      pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
+      0, 0, pixelCrop.width, pixelCrop.height
+    )
+
+    canvas.toBlob((blob) => {
+      if (blob) onApply(blob)
+    }, 'image/jpeg', 0.9)
+  }, [crop, onApply])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-admin-surface-container-lowest rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+        <h3 className="text-headline-sm font-headline-md text-admin-on-surface">Crop Image</h3>
+        <div className="rounded-xl overflow-hidden border border-admin-outline-variant bg-admin-surface-container-low">
+          <ReactImageCrop
+            src={src}
+            crop={crop}
+            onChange={setCrop}
+            onComplete={onComplete}
+            ref={imgRef}
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-admin-outline-variant text-admin-on-surface-variant font-label-md hover:bg-admin-surface-container-low transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleApply} className="px-4 py-2 rounded-lg bg-admin-secondary text-admin-on-secondary font-label-md hover:opacity-90 transition-opacity">
+            Apply Crop
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function TeacherUpload() {
   const navigate = useNavigate()
   const [examDate, setExamDate] = useState(today())
@@ -28,16 +89,49 @@ export default function TeacherUpload() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [cropModal, setCropModal] = useState(null)
+  const [crop, setCrop] = useState(DEFAULT_CROP)
+  const [cropSrc, setCropSrc] = useState(null)
 
   const addRow = () => setRows((prev) => [...prev, { ...EMPTY_ROW }])
   const removeRow = (idx) => setRows((prev) => prev.filter((_, i) => i !== idx))
   const updateRow = (idx, field, value) => setRows((prev) => prev.map((row, i) => i === idx ? { ...row, [field]: value } : row))
 
-  const handleImageUpload = (idx, file) => {
+  const handleImageSelect = (idx, file) => {
     if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError(`Question ${idx + 1}: Only image files are allowed.`)
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError(`Question ${idx + 1}: Image must be under 5MB.`)
+      return
+    }
+    setError('')
     const preview = URL.createObjectURL(file)
-    setRows((prev) => prev.map((row, i) => i === idx ? { ...row, imageFile: file, imagePreview: preview } : row))
+    setCropModal(idx)
+    setCropSrc(preview)
+    setCrop(DEFAULT_CROP)
   }
+
+  const handleCropApply = useCallback((blob) => {
+    if (cropModal === null) return
+    const url = URL.createObjectURL(blob)
+    const file = new File([blob], 'cropped.jpg', { type: 'image/jpeg' })
+    if (rows[cropModal]?.imagePreview) {
+      URL.revokeObjectURL(rows[cropModal].imagePreview)
+    }
+    setRows((prev) => prev.map((row, i) => i === cropModal ? { ...row, imageFile: file, imagePreview: url } : row))
+    if (cropSrc) URL.revokeObjectURL(cropSrc)
+    setCropModal(null)
+    setCropSrc(null)
+  }, [cropModal, cropSrc, rows])
+
+  const handleCropCancel = useCallback(() => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc)
+    setCropModal(null)
+    setCropSrc(null)
+  }, [cropSrc])
 
   const handleSubmit = async () => {
     setError('')
@@ -50,18 +144,20 @@ export default function TeacherUpload() {
     setLoading(true)
     try {
       const formData = new FormData()
-      formData.append('exam_date', examDate)
-      formData.append('question_count', rows.length)
+      formData.append('date', examDate)
+      const questionsPayload = rows.map(row => ({
+        text: row.text,
+        option_a: row.option_a,
+        option_b: row.option_b,
+        option_c: row.option_c,
+        option_d: row.option_d,
+        correct_answer: row.correct_answer,
+        retake_allowed: row.retake,
+        image_url: row.image_url || '',
+      }))
+      formData.append('questions', JSON.stringify(questionsPayload))
       rows.forEach((row, idx) => {
-        formData.append(`questions[${idx}][text]`, row.text)
-        formData.append(`questions[${idx}][option_a]`, row.option_a)
-        formData.append(`questions[${idx}][option_b]`, row.option_b)
-        formData.append(`questions[${idx}][option_c]`, row.option_c)
-        formData.append(`questions[${idx}][option_d]`, row.option_d)
-        formData.append(`questions[${idx}][correct_answer]`, row.correct_answer)
-        formData.append(`questions[${idx}][retake]`, row.retake)
-        if (row.imageFile) formData.append(`questions[${idx}][image]`, row.imageFile)
-        if (row.image_url) formData.append(`questions[${idx}][image_url]`, row.image_url)
+        if (row.imageFile) formData.append(`image_${idx}`, row.imageFile)
       })
       await adminAPI.uploadQuestions(formData)
       setSuccess(`${rows.length} question${rows.length > 1 ? 's' : ''} uploaded successfully!`)
@@ -134,7 +230,7 @@ export default function TeacherUpload() {
                     <span className="text-label-sm font-label-sm text-admin-outline">THUMBNAIL</span>
                     <label className="absolute inset-0 bg-admin-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                       <span className="bg-admin-primary text-admin-on-primary p-2 rounded-full shadow-lg material-symbols-outlined">edit</span>
-                      <input type="file" accept="image/*" hidden onChange={(e) => handleImageUpload(idx, e.target.files?.[0])} />
+                      <input type="file" accept="image/*" hidden onChange={(e) => handleImageSelect(idx, e.target.files?.[0])} />
                     </label>
                   </>
                 )}
@@ -240,6 +336,17 @@ export default function TeacherUpload() {
           {loading ? 'Uploading...' : `Upload ${rows.length} Question${rows.length > 1 ? 's' : ''}`}
         </button>
       </main>
+
+      {cropModal !== null && cropSrc && (
+        <ImageCropperModal
+          src={cropSrc}
+          crop={crop}
+          setCrop={setCrop}
+          onComplete={setCrop}
+          onApply={handleCropApply}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   )
 }

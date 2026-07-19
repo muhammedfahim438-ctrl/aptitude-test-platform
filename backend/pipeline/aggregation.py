@@ -30,7 +30,7 @@ def aggregate_and_export(exam_date):
             DailyScore(student=sub.student, exam_date=exam_date, score=score)
         )
         student_rows.append(
-            (sub.student.id, sub.student.full_name, score)
+            (sub.student.id, sub.student.full_name, score, getattr(sub.student, 'department', ''))
         )
 
     with transaction.atomic():
@@ -47,19 +47,19 @@ def aggregate_and_export(exam_date):
     ranked_rows = []
     prev_score = None
     prev_rank = 0
-    for i, (student_id, name, score) in enumerate(student_rows, start=1):
+    for i, (student_id, name, score, department) in enumerate(student_rows, start=1):
         if score != prev_score:
             prev_rank = i
             prev_score = score
-        ranked_rows.append([student_id, name, score, prev_rank, export_timestamp])
+        ranked_rows.append([student_id, name, score, prev_rank, export_timestamp, department])
 
     export_path = os.path.join(
         settings.MEDIA_ROOT, 'exports', f'Master_Report_{exam_date}.csv'
     )
     os.makedirs(os.path.dirname(export_path), exist_ok=True)
-    with open(export_path, 'w', newline='') as f:
+    with open(export_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(['student_id', 'name', 'score', 'rank', 'timestamp'])
+        writer.writerow(['student_id', 'name', 'score', 'rank', 'timestamp', 'department'])
         writer.writerows(ranked_rows)
 
     return export_path
