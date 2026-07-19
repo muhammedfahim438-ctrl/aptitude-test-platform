@@ -77,11 +77,13 @@ Student Login → Dashboard → Exam (timed) → Submit → Result → Answer Re
 | jwt-decode | ^4.0.0 | JWT token decoding in ProtectedRoute |
 
 ### Styling
-- **No CSS framework** — all inline styles + minimal global CSS in `index.css`
-- Fonts: Space Grotesk (headings), Inter (body), JetBrains Mono (labels)
-- Icons: Google Material Symbols + Remix Icons (admin pages)
+- **Tailwind CSS** for student pages (utility classes), **inline styles** for admin pages and some components
+- Admin also uses custom Tailwind classes (`admin-*` prefixed tokens) via `index.css`
+- Fonts: Space Grotesk (headings), Inter (body), JetBrains Mono (labels), Geist (admin pages)
+- Icons: Google Material Symbols (standardized across all pages)
 - Mobile-first design (max-width: 480px)
-- NGI brand colors: Primary Indigo `#465aa3`, Primary-Container `#EAEFFD`, Success `#10b981`
+- Student brand colors: Primary Indigo `#465aa3`, Primary-Container `#EAEFFD`, Success/Tertiary `#116b51`, Error `#E2737A`
+- Admin brand colors: Orange primary `#ff6b00`, Blue secondary `#2563eb`
 
 ---
 
@@ -110,7 +112,7 @@ aptitude-test-platform/
 │   │   │   ├── base.py                ← Shared settings (timezone, JWT, apps, whitenoise)
 │   │   │   ├── local.py               ← Dev settings (SQLite, 7-day JWT tokens)
 │   │   │   └── production.py          ← Prod settings (PostgreSQL, 15-min tokens, HSTS)
-│   │   ├── urls.py                    ← ALL 23 route definitions live here
+│   │   ├── urls.py                    ← ALL 28 route definitions live here
 │   │   ├── wsgi.py
 │   │   ├── asgi.py
 │   │   └── permissions.py             ← IsStudentUser, IsTeacherUser, IsAnswerWindowOpen
@@ -129,6 +131,11 @@ aptitude-test-platform/
 │   │   ├── cache.py                   ← Redis cache logic for questions
 │   │   ├── admin.py                   ← Admin registration
 │   │   ├── tests.py                   ← Exam endpoint tests (6 tests)
+│   │   ├── tests_admin.py             ← Admin CRUD tests (15 tests)
+│   │   ├── tests_submit.py            ← Submit endpoint payload tests (17 tests)
+│   │   ├── tests_security_rbac.py     ← RBAC rejection tests (7 tests)
+│   │   ├── tests_data_integrity.py    ← Unique constraint tests (5 tests)
+│   │   ├── tests_image_upload.py      ← Image upload tests (4 tests)
 │   │   └── management/commands/
 │   │       ├── warm_question_cache.py  ← Cron-triggered cache preloader
 │   │       └── seed_test_data.py       ← Dev utility to seed test data
@@ -138,19 +145,21 @@ aptitude-test-platform/
 │   │   ├── views.py                   ← 10 views: dashboard, rankings, reports, student dashboard/review/leaderboard, cron endpoints
 │   │   ├── aggregation.py             ← Core scoring logic + CSV export
 │   │   ├── signals.py                 ← Stale CSV purge on new question upload
-│   │   ├── tests/                     ← 20 tests (aggregation, deletion, signals, leaderboard, integration)
+│   │   ├── tests/                     ← 57 tests (aggregation, deletion, signals, leaderboard, integration, cleanup, monthly, department, CSV quality)
 │   │   └── management/commands/
 │   │       ├── aggregate_scores.py    ← Grade submissions for a date
 │   │       ├── compute_weekly_leaderboard.py
 │   │       ├── flush_weekly_leaderboard.py
 │   │       ├── process_deletions.py   ← Auto-delete expired CSVs
-│   │       └── cleanup_day.py         ← Post-review data cleanup
+│   │       ├── cleanup_day.py         ← Post-review data cleanup
+│   │       ├── compute_monthly_leaderboard.py
+│   │       └── flush_monthly_leaderboard.py
 │   │
 │   └── tests/
 │       └── locustfile.py              ← Load test (2000 concurrent users)
 │
 └── frontend/
-    ├── index.html                     ← Remix Icon CDN + Material Symbols + Google Fonts
+    ├── index.html                     ← Material Symbols + Google Fonts CDN
     ├── package.json
     ├── vite.config.js
     ├── public/
@@ -162,7 +171,7 @@ aptitude-test-platform/
         ├── api/
         │   └── client.js             ← Axios instance with JWT interceptors + authAPI/examAPI/adminAPI/studentAPI
         ├── router/
-        │   ├── AppRouter.jsx          ← React Router v6 (BrowserRouter) — 16 routes
+        │   ├── AppRouter.jsx          ← React Router v6 (BrowserRouter) — 19 routes
         │   └── ProtectedRoute.jsx     ← JWT decode + role guard
         ├── hooks/
         │   ├── usePersistedAnswers.js  ← Base64-encoded localStorage answers
@@ -177,10 +186,13 @@ aptitude-test-platform/
             ├── student/
             │   ├── Register.jsx        ← Student registration with password
             │   ├── StudentDashboard.jsx ← 5-state exam card + stats + recent scores
+            │   ├── AssessmentDetails.jsx ← Pre-exam instructions + consent checkbox
             │   ├── ExamPage.jsx        ← Real API exam interface with countdown + auto-submit
+            │   ├── SubmissionProcessing.jsx ← Animated progress screen after submit
             │   ├── StudentResult.jsx   ← Post-submit confirmation + score display
-            │   ├── LeaderboardPage.jsx ← Leaderboard (uses mock data — see §16)
-            │   └── AnswerReview.jsx    ← Answer review with score breakdown
+            │   ├── LeaderboardPage.jsx ← Leaderboard (connected to real API)
+            │   ├── AnswerReview.jsx    ← Answer review with score breakdown
+            │   └── PreviousQuestions.jsx ← Placeholder for past questions
             └── admin/
                 ├── AdminLogin.jsx      ← Teacher/admin login
                 ├── AdminDashboard.jsx  ← Stats dashboard with nav tiles
@@ -290,7 +302,7 @@ aptitude-test-platform/
 | AnswerReview page (real API) | Vikky | ✅ Done | `pages/student/AnswerReview.jsx` |
 | Consolidated README.md | All | ✅ Done | `README.md` |
 | CI/CD pipeline | All | ⬜ Not Started | — |
-| Frontend testing setup | Vijay/Vikky | ⬜ Not Started | — |
+| Frontend testing setup | Vijay/Vikky | ✅ Done | `vite.config.js`, `src/test/` |
 
 ---
 
@@ -318,6 +330,8 @@ option_b       = CharField(max_length=500)
 option_c       = CharField(max_length=500)
 option_d       = CharField(max_length=500)
 image_url      = URLField(null=True, blank=True)
+image          = FileField(upload_to='questions/images/', null=True, blank=True)
+retake_allowed = BooleanField(default=True)
 created_at     = DateTimeField(auto_now_add=True)
 # Ordering: exam_date, then id
 ```
@@ -420,6 +434,9 @@ All routes are defined in `backend/core/urls.py`.
 |---|---|---|
 | POST | `/api/admin/upload-questions/` | Upload 10 questions (multipart) |
 | GET | `/api/admin/questions/?date=YYYY-MM-DD` | List questions (search + filter) |
+| GET | `/api/admin/questions/<id>/` | Get question detail |
+| PATCH | `/api/admin/questions/<id>/` | Update question (partial) |
+| PUT | `/api/admin/questions/<id>/` | Update question (full) |
 | DELETE | `/api/admin/questions/<id>/` | Delete a question |
 | GET | `/api/admin/dashboard-stats/` | Today's stats |
 | GET | `/api/admin/rankings/?period=weekly&top=10` | Daily/weekly rankings |
@@ -438,7 +455,7 @@ All routes are defined in `backend/core/urls.py`.
 | POST | `/api/internal/flush-monthly-leaderboard/` | Clear monthly leaderboard |
 | POST | `/api/internal/compute-monthly-leaderboard/` | Recompute monthly leaderboard |
 
-**Total: 26 endpoints**
+**Total: 28 endpoints**
 
 ### Response Formats
 
@@ -478,7 +495,10 @@ All routes are defined in `backend/core/urls.py`.
 **Submit response (success):**
 ```json
 {
-  "status": "created",
+  "message": "Submission received",
+  "student": "user@email.com",
+  "exam_date": "2025-07-15",
+  "answers_submitted": 10,
   "created": true
 }
 ```
@@ -580,8 +600,14 @@ python manage.py process_deletions
 # Pre-warm Redis cache for questions (normally cron-triggered at 9:45 AM)
 python manage.py warm_question_cache --date=2025-07-15
 
-# Clean up student data after review window closes
+# Clean up student data after review window closes (preserves DailyScore)
 python manage.py cleanup_day --date=2025-07-15
+
+# Compute monthly leaderboard from DailyScore records
+python manage.py compute_monthly_leaderboard
+
+# Clear monthly leaderboard (run before recompute)
+python manage.py flush_monthly_leaderboard
 
 # Compute monthly leaderboard from DailyScore records
 python manage.py compute_monthly_leaderboard
@@ -601,7 +627,7 @@ python manage.py flush_monthly_leaderboard
 ## 11. Frontend Architecture
 
 ### Routing
-The frontend uses **React Router v6** (`BrowserRouter`) defined in `AppRouter.jsx` with 16 routes. All authenticated routes use `<ProtectedRoute>` with JWT decode for role-based access.
+The frontend uses **React Router v6** (`BrowserRouter`) defined in `AppRouter.jsx` with 19 routes. All authenticated routes use `<ProtectedRoute>` with JWT decode for role-based access.
 
 ### Page Components
 | Page | Path | Description |
@@ -610,8 +636,10 @@ The frontend uses **React Router v6** (`BrowserRouter`) defined in `AppRouter.js
 | Register | `/register` | Student registration with password |
 | Student Dashboard | `/student/dashboard` | 5-state exam card + stats + recent scores |
 | Exam | `/student/exam` | Real API exam interface with countdown + auto-submit |
+| Assessment Details | `/student/assessment-details` | Pre-exam instructions + consent checkbox |
+| Submission Processing | `/student/submission-processing` | Animated progress screen after submit |
 | Result | `/student/result` | Post-submit confirmation + score display |
-| Leaderboard | `/student/leaderboard` | Student leaderboard view (⚠️ uses mock data — see §16) |
+| Leaderboard | `/student/leaderboard` | Student leaderboard view (connected to real API) |
 | Answer Review | `/student/review` | Answer review with score breakdown |
 | Admin Login | `/admin/login` | Teacher/admin login |
 | Admin Dashboard | `/admin/dashboard` | Stats dashboard with nav tiles |
@@ -671,22 +699,76 @@ const C = {
 
 ## 13. Testing
 
-### Backend Tests (47 tests)
+### Backend Tests (132 tests)
 
 **Auth & Security (`accounts/tests.py` — 21 tests):**
-- AnswerKeyTimeGateTest (6 tests) — time-gated answer key access
-- LoginEndpointTest (7 tests) — login success/failure scenarios
-- SecurityAuditTest (8 tests) — unauthorized access, invalid tokens
+- AnswerKeyTimeGateTest (6) — time-gated answer key access
+- LoginEndpointTest (8) — login success/failure scenarios
+- SecurityAuditTest (7) — unauthorized access, invalid tokens
 
 **Exams (`exams/tests.py` — 6 tests):**
-- Question and submission endpoint tests
+- StudentReviewWindowTest — review endpoint time-gating
 
-**Pipeline (`pipeline/tests/` — 20 tests):**
-- test_aggregation.py (5 tests) — scoring logic
-- test_deletion.py (4 tests) — scheduled file deletion
-- test_signals.py (4 tests) — stale CSV purge
-- test_leaderboard.py (5 tests) — weekly leaderboard
-- test_integration.py (1 test) — full CSV lifecycle
+**Exams Admin (`exams/tests_admin.py` — 15 tests):**
+- UploadQuestionsTest (7) — upload validation, exact count, RBAC
+- AdminQuestionEditTest (5) — PATCH/PUT persistence, 404 handling
+- CSVExportDepartmentTest (3) — CSV contains department column
+
+**Exams Submit (`exams/tests_submit.py` — 17 tests):**
+- SubmitAnswersViewPayloadTest — response format matches spec, resubmission, 409/400/401
+
+**Exams Security (`exams/tests_security_rbac.py` — 7 tests):**
+- StudentRBACRejectionTest — student gets 403 on all admin endpoints
+
+**Exams Data Integrity (`exams/tests_data_integrity.py` — 5 tests):**
+- DataIntegrityTest — unique constraints on submissions and answer keys
+
+**Exams Image Upload (`exams/tests_image_upload.py` — 4 tests):**
+- ImageUploadTest — image file persistence, field independence
+
+**Pipeline (`pipeline/tests/` — 57 tests):**
+- test_aggregation.py (5) — scoring logic
+- test_deletion.py (4) — scheduled file deletion
+- test_signals.py (5) — stale CSV purge
+- test_leaderboard.py (5) — weekly leaderboard
+- test_integration.py (1) — full CSV lifecycle
+- test_internal_endpoints.py (6) — cron endpoint auth + behavior
+- test_csv_export_quality.py (5) — UTF-8, Unicode names, CSV structure
+- test_monthly_leaderboard.py (8) — monthly compute/flush
+- test_department_and_migration.py (9) — department field, schema
+- test_cleanup_day.py (9) — cleanup preserves DailyScore
+
+### Frontend Tests (86 tests)
+
+**Login (`Login.test.jsx` — 14 tests):**
+- Form rendering, validation, API calls, localStorage, error handling
+
+**Student Dashboard (`StudentDashboard.test.jsx` — 10 tests):**
+- Loading, exam card states, stats, error handling, navigation
+
+**Exam Page (`ExamPage.test.jsx` — 8 tests):**
+- Loading, questions render, 404/503 messages, timer display
+
+**Teacher Upload (`TeacherUpload.test.jsx` — 9 tests):**
+- Form, add/remove rows, validation, FormData, success/error
+
+**Teacher Reports (`TeacherReports.test.jsx` — 6 tests):**
+- Tab switching, report cards, download, empty/loading
+
+**Leaderboard (`LeaderboardPage.test.jsx` — 8 tests):**
+- Loading, podium, ranked list, empty/error, API call
+
+**Register (`Register.test.jsx` — 7 tests):**
+- Form fields, validation, register API, success/error
+
+**ProtectedRoute (`ProtectedRoute.test.jsx` — 5 tests):**
+- JWT role check, redirect, refresh, no token
+
+**API Client (`client.test.js` — 17 tests):**
+- All authAPI, examAPI, studentAPI, adminAPI methods
+
+**Icon Audit (`iconAudit.test.js` — 2 tests):**
+- No Remix Icon classes, no Remix CDN links
 
 ### Load Testing
 - **Tool:** Locust (`tests/locustfile.py`)
@@ -700,13 +782,20 @@ const C = {
 cd backend
 python manage.py test
 
+# Frontend tests
+cd frontend
+npm test -- --run
+
 # Load test
 cd backend
 locust -f tests/locustfile.py --host=http://127.0.0.1:8000
 ```
 
 ### Frontend Testing
-- **Not yet set up** — no Jest, Vitest, or testing library installed
+- **Framework:** Vitest + React Testing Library + jsdom
+- **Config:** `frontend/vite.config.js` with test config
+- **Setup:** `frontend/src/test/setup.js` (jest-dom matchers)
+- **10 test files**, 86 tests covering Login, Dashboard, Exam, Upload, Reports, Leaderboard, Register, ProtectedRoute, API Client, and Icon Audit
 
 ---
 
@@ -747,7 +836,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173
 
 ### Code Style
 - **No comments** in code unless absolutely necessary
-- **Inline styles only** on frontend (no CSS files, no Tailwind)
+- **Student pages use Tailwind CSS** utility classes; admin pages use **inline styles** + custom admin Tailwind tokens
 - **Python:** Follow PEP 8, use type hints where practical
 - **DRF serializers** for all API responses
 - **Management commands** for all background tasks (not Celery)
@@ -775,11 +864,7 @@ main ← development ← feature/* branches
 ## 16. Known Issues & TODOs
 
 ### High Priority
-1. **`LeaderboardPage.jsx` uses mock data** — not connected to real API (`/api/student/leaderboard/`). Must wire up before production. Location: `pages/student/LeaderboardPage.jsx`
-2. **`cleanup_day` command deletes `DailyScore`** — should preserve records for historical analytics. Only submissions and leaderboard entries should be deleted. Location: `pipeline/management/commands/cleanup_day.py:36`
-3. **`Login.jsx` unnecessary login call** — calls `authAPI.login(email, email)` before falling back to student-signin. Should call student-signin directly. Location: `pages/Login.jsx`
-4. **`Register.jsx` same pattern** — calls `authAPI.login()` before `register()`. Should call register directly. Location: `pages/student/Register.jsx`
-5. **Mixed icon systems** — admin pages use Remix Icons (`ri-*`) while student pages use Material Symbols. Should standardize.
+1. *(none — all critical/high bugs fixed)*
 
 ### Medium Priority
 6. `accounts/serializers.py` is dead code — views don't use serializers
@@ -804,7 +889,7 @@ main ← development ← feature/* branches
 10. **All API routes are in `core/urls.py`** — app-level `urls.py` files are empty by design
 11. **Database is PostgreSQL in production** — never hardcode SQLite for prod
 12. **`ExamPage.jsx` uses real API** — the old temp preview mode has been removed
-13. **Backend serves 26 API endpoints** — 5 public, 6 student, 7 admin, 8 internal cron
+13. **Backend serves 28 API endpoints** — 5 public, 6 student, 9 admin, 8 internal cron
 
 ---
 

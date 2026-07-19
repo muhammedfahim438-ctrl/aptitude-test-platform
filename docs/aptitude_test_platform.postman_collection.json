@@ -291,6 +291,48 @@
           }
         },
         {
+          "name": "Update Question (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Updated question text\",\n  \"option_a\": \"A\",\n  \"option_b\": \"B\",\n  \"option_c\": \"C\",\n  \"option_d\": \"D\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "1", ""]
+            },
+            "description": "Partial update of a question. Accepts any subset of: text, option_a, option_d, image_url, retake_allowed. Returns updated question. Returns 404 if not found."
+          }
+        },
+        {
+          "name": "Update Question (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Updated question text\",\n  \"option_a\": \"A\",\n  \"option_b\": \"B\",\n  \"option_c\": \"C\",\n  \"option_d\": \"D\",\n  \"retake_allowed\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "1", ""]
+            },
+            "description": "Full update of a question. All fields required. Returns updated question. Returns 404 if not found."
+          }
+        },
+        {
           "name": "Delete Question",
           "request": {
             "method": "DELETE",
@@ -321,7 +363,7 @@
                 { "key": "top", "value": "10", "description": "Number of top students to return" }
               ]
             },
-            "description": "Returns daily, weekly, or monthly rankings. Daily: from DailyScore. Weekly: from WeeklyLeaderboard. Monthly: from MonthlyLeaderboard."
+            "description": "Returns daily or weekly rankings. Daily: from DailyScore. Weekly: from WeeklyLeaderboard."
           }
         },
         {
@@ -420,7 +462,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "internal", "cleanup-day", ""]
             },
-            "description": "Cron-triggered at 7:30 PM IST. Wipes StudentSubmission rows and student accounts for the date. NOTE: Currently also deletes DailyScore — this is a known bug."
+            "description": "Deletes StudentSubmission and DailyLeaderboard entries. Preserves DailyScore for analytics."
           }
         },
         {

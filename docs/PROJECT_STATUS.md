@@ -12,16 +12,16 @@
 |----------|--------|
 | **Backend API** | 100% complete — 26 endpoints (5 public + 6 student + 7 admin + 8 internal cron) |
 | **Backend Pipeline** | 100% complete — aggregation, CSV lifecycle, signals, all management commands |
-| **Backend Tests** | 47 tests passing (accounts: 21, exams: 6, pipeline: 19 + 1 integration) |
+| **Backend Tests** | 132 tests passing (accounts: 21, exams: 54, pipeline: 57) |
 | **Backend Hardening** | 100% complete — whitenoise, conn_max_age=600, HSTS, compressed static files |
 | **Frontend Routing** | 100% complete — React Router v6 with role-based ProtectedRoute guards |
-| **Frontend Pages** | 8 admin pages + 6 student pages fully implemented |
+| **Frontend Pages** | 8 admin pages + 9 student pages fully implemented |
 | **Frontend Components** | 4 components — QuestionCard, CountdownTimer, BottomNav, StudentBottomNav |
 | **Frontend Hooks** | 100% complete — both hooks implemented |
 | **Load Testing** | 100% complete — Locust with 2000-user config |
 | **Deployment Config** | 100% complete — Procfile, render.yaml, .env.example, whitenoise, HSTS |
 | **Documentation** | 100% complete — README.md consolidated, CLAUDE.md, PROJECT_STATUS.md, Postman collection |
-| **Frontend Testing** | 0% — no test framework installed |
+| **Frontend Testing** | 86 tests passing (Vitest + React Testing Library) |
 
 ---
 
@@ -97,13 +97,13 @@
 |----------------------|--------|----------|
 | `cleanup_day` management command | ✅ Done | `pipeline/management/commands/cleanup_day.py` |
 | `POST /api/internal/cleanup-day/` endpoint | ✅ Done | `pipeline/views.py:cleanup_day_view` |
-| Deletes StudentSubmission, DailyScore, DailyLeaderboard for date | ✅ Done | `cleanup_day.py:35-37` |
+| Deletes StudentSubmission and DailyLeaderboard for date | ✅ Done | `cleanup_day.py:35-36` |
+| Preserves DailyScore for historical analytics | ✅ Done | `cleanup_day.py:35` (only deletes submissions + leaderboard) |
 | Protected by `X-Cron-Secret` header | ✅ Done | `pipeline/views.py` |
 | Default date = yesterday | ✅ Done | `cleanup_day.py:31` |
+| Tests: preserves DailyScore | ✅ Done | `pipeline/tests/test_cleanup_day.py` (9 tests) |
 
-**⚠️ Known Bug:** Also deletes `DailyScore` records — should preserve them for historical analytics. See Section 3, bug #8.
-
-**Verdict: 100% CODE COMPLETE (has data preservation bug)**
+**Verdict: 100% COMPLETE**
 
 ---
 
@@ -213,10 +213,9 @@
 | `update_or_create` on (student, exam_date) | ✅ Done | `exams/views.py` |
 | Returns 409 after 2PM | ✅ Done | `exams/views.py` |
 | 201 on new, 200 on update | ✅ Done | `exams/views.py` |
+| Response format matches spec | ✅ Done | `exams/views.py` (message, student, exam_date, answers_submitted, created) |
 
-**⚠️ Deviation:** Response format returns `{status, created}` instead of spec's `{message, student, exam_date, answers_submitted}`.
-
-**Verdict: 100% COMPLETE (response format differs from spec)**
+**Verdict: 100% COMPLETE**
 
 ---
 
@@ -266,10 +265,9 @@
 | Inline error message | ✅ Done | `Login.jsx` |
 | Spinner during API call | ✅ Done | `Login.jsx` |
 | Enter key submits | ✅ Done | `<form onSubmit>` |
+| Passwordless student sign-in | ✅ Done | `Login.jsx` (calls `studentSignin` directly) |
 
-**⚠️ Bug:** Calls `authAPI.login(email, email)` before falling back to student-signin. Should call student-signin directly.
-
-**Verdict: 100% COMPLETE (has unnecessary API call bug)**
+**Verdict: 100% COMPLETE**
 
 ---
 
@@ -376,7 +374,12 @@
 | `accounts/serializers.py` | ⚠️ Dead code | — |
 | `accounts/tests.py` | ✅ | 21 tests total |
 | `exams/models.py` | ✅ | — |
-| `exams/views.py` | ✅ | 6 tests |
+| `exams/tests.py` | ✅ | 6 tests |
+| `exams/tests_admin.py` | ✅ | 15 tests |
+| `exams/tests_submit.py` | ✅ | 17 tests |
+| `exams/tests_security_rbac.py` | ✅ | 7 tests |
+| `exams/tests_data_integrity.py` | ✅ | 5 tests |
+| `exams/tests_image_upload.py` | ✅ | 4 tests |
 | `exams/serializers.py` | ✅ | — |
 | `exams/cache.py` | ✅ | — |
 | `exams/admin.py` | ✅ | — |
@@ -393,13 +396,18 @@
 | `pipeline/management/commands/cleanup_day.py` | ✅ | — |
 | `pipeline/tests/test_leaderboard.py` | ✅ | 5 tests |
 | `pipeline/tests/test_integration.py` | ✅ | 1 test |
+| `pipeline/tests/test_internal_endpoints.py` | ✅ | 6 tests |
+| `pipeline/tests/test_csv_export_quality.py` | ✅ | 5 tests |
+| `pipeline/tests/test_monthly_leaderboard.py` | ✅ | 8 tests |
+| `pipeline/tests/test_department_and_migration.py` | ✅ | 9 tests |
+| `pipeline/tests/test_cleanup_day.py` | ✅ | 9 tests |
 | `tests/locustfile.py` | ✅ | — |
 | `requirements.txt` | ✅ | — |
 | `requirements-dev.txt` | ✅ | — |
 | `Procfile` | ✅ | — |
 | `.env.example` | ✅ | — |
 
-**Backend total: 47 tests passing**
+**Backend total: 132 tests passing**
 
 ### Frontend Files (all present and functional)
 
@@ -419,7 +427,9 @@
 | `src/pages/Login.jsx` | ✅ | Student passwordless sign-in |
 | `src/pages/student/Register.jsx` | ✅ | Registration form |
 | `src/pages/student/StudentDashboard.jsx` | ✅ | 5-state exam card + stats |
+| `src/pages/student/AssessmentDetails.jsx` | ✅ | Pre-exam instructions + consent |
 | `src/pages/student/ExamPage.jsx` | ✅ | Real API exam interface |
+| `src/pages/student/SubmissionProcessing.jsx` | ✅ | Animated progress screen |
 | `src/pages/student/StudentResult.jsx` | ✅ | Post-submit confirmation + score |
 | `src/pages/student/LeaderboardPage.jsx` | ✅ | Connected to real API |
 | `src/pages/student/AnswerReview.jsx` | ✅ | Answer review with score breakdown |
@@ -431,7 +441,8 @@
 | `src/pages/admin/PlatformAnalytics.jsx` | ✅ | Analytics |
 | `src/pages/admin/RankPage.jsx` | ✅ | Rankings |
 | `src/pages/admin/TeacherReports.jsx` | ✅ | Reports + CSV download |
-| `index.html` | ✅ | Remix Icon CDN + Material Symbols |
+| `src/pages/student/PreviousQuestions.jsx` | ✅ | Placeholder for past questions |
+| `index.html` | ✅ | Material Symbols + Google Fonts CDN |
 | `package.json` | ✅ | All deps installed |
 | `vite.config.js` | ✅ | — |
 
@@ -451,16 +462,6 @@
 |---|-------|----------|-------|
 | — | *(all critical/high bugs fixed)* | — | — |
 
-### Medium (cleanup)
-
-| # | Issue | Location | Owner |
-|---|-------|----------|-------|
-| 6 | `accounts/serializers.py` — dead code (views don't use serializers) | `accounts/serializers.py` | SHAHIN |
-| 7 | `accounts/managers.py` — empty stub (manager lives in models.py) | `accounts/managers.py` | SHAHIN |
-| 8 | `SubmitAnswersView` response format differs from spec | `exams/views.py` | SREEKUTTAN |
-| 9 | No frontend testing framework installed | `package.json` | VIJAY/VIKKY |
-| 10 | No CI/CD pipeline (GitHub Actions) | — | ALL |
-
 ---
 
 ## SECTION 4 — What's Still TODO
@@ -469,21 +470,15 @@
 
 | # | Task | Owner | Estimate |
 |---|------|-------|----------|
-| 1 | Wire up `LeaderboardPage` to real API (`/api/student/leaderboard/`) | VIJAY | 1 hr |
-| 2 | Fix unnecessary login calls in Login.jsx and Register.jsx | VIJAY | 30 min |
-| 3 | Fix `cleanup_day` to preserve DailyScore records | FAHIM | 15 min |
-| 4 | Standardize icon system (pick Remix OR Material Symbols) | VIJAY | 1 hr |
-| 5 | Set up cron-job.org schedules on deployment | FAHIM | 30 min |
+| 1 | Set up cron-job.org schedules on deployment | FAHIM | 30 min |
 
 ### Nice-to-Have (Post-MVP)
 
 | # | Task | Owner | Estimate |
 |---|------|-------|----------|
-| 6 | Install Vitest + React Testing Library | VIJAY | 30 min |
-| 7 | Write frontend unit tests | VIJAY/VIKKY | 4 hr |
-| 8 | Clean up dead code (serializers, managers) | SHAHIN | 30 min |
-| 9 | Fix submit response format to match spec | SREEKUTTAN | 30 min |
-| 10 | CI/CD pipeline (GitHub Actions) | ALL | 3 hr |
+| 2 | Clean up dead code (serializers, managers) | SHAHIN | 30 min |
+| 3 | Fix submit response format to match spec | SREEKUTTAN | 30 min |
+| 4 | CI/CD pipeline (GitHub Actions) | ALL | 3 hr |
 
 ---
 
@@ -504,6 +499,9 @@
 | GET | `/api/student/leaderboard/?top=` | ✅ | ✅ (connected to API) | JWT + Student |
 | POST | `/api/admin/upload-questions/` | ✅ | ✅ (TeacherUpload) | JWT + Teacher |
 | GET | `/api/admin/questions/?date=` | ✅ | ✅ (AdminQuestions) | JWT + Teacher |
+| GET | `/api/admin/questions/<id>/` | ✅ | ✅ (AdminQuestionDateDetail) | JWT + Teacher |
+| PATCH | `/api/admin/questions/<id>/` | ✅ | ✅ (AdminQuestionDateDetail) | JWT + Teacher |
+| PUT | `/api/admin/questions/<id>/` | ✅ | ✅ (AdminQuestionDateDetail) | JWT + Teacher |
 | DELETE | `/api/admin/questions/<id>/` | ✅ | ✅ (AdminQuestionDateDetail) | JWT + Teacher |
 | GET | `/api/admin/dashboard-stats/` | ✅ | ✅ (AdminDashboard) | JWT + Teacher |
 | GET | `/api/admin/rankings/?period=&top=` | ✅ | ✅ (RankPage) | JWT + Teacher |
@@ -518,7 +516,7 @@
 | POST | `/api/internal/flush-monthly-leaderboard/` | ✅ | — | Cron Secret |
 | POST | `/api/internal/compute-monthly-leaderboard/` | ✅ | — | Cron Secret |
 
-**Total: 26 endpoints** (5 public + 6 student + 7 admin + 8 internal cron)
+**Total: 28 endpoints** (5 public + 6 student + 9 admin + 8 internal cron)
 
 ---
 
