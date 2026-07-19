@@ -26,6 +26,7 @@ export default function ExamPage() {
   const [submitError, setSubmitError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [currentIdx, setCurrentIdx] = useState(0)
+  const [showPalette, setShowPalette] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -76,7 +77,7 @@ export default function ExamPage() {
         await examAPI.submitAnswers(examDate, answers)
         setSubmitted(true)
         clearAnswers()
-        navigate('/student/result', { replace: true })
+        navigate('/student/submission-processing', { replace: true, state: { answers, totalQuestions: questions.length } })
       } catch (err) {
         const status = err.response?.status
         const isRetryable = !status || status === 503 || status === 500
@@ -90,7 +91,7 @@ export default function ExamPage() {
     }
     await attempt(isAutoSubmit ? 3 : 0)
     setSubmitting(false)
-  }, [examDate, answers, submitted, clearAnswers, navigate])
+  }, [examDate, answers, submitted, clearAnswers, navigate, questions.length])
 
   const handleAutoSubmit = useCallback(() => {
     if (questions.length === 0) return
@@ -100,6 +101,7 @@ export default function ExamPage() {
   const timerDisplay = useExamCountdown(examEnd, handleAutoSubmit)
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
   const currentQuestion = questions[currentIdx]
+  const unansweredCount = questions.length - answeredCount
 
   if (isBeforeWindow && !loading) {
     return (
@@ -111,42 +113,42 @@ export default function ExamPage() {
     )
   }
 
-  const getOptionState = (label) => {
-    if (answers[`q${currentQuestion?.id}`] === label) return 'selected'
-    return 'unselected'
-  }
-
   return (
     <div className="min-h-screen bg-background text-on-surface overflow-x-hidden">
-      <header className="fixed top-0 w-full z-50 bg-surface shadow-sm flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/student/dashboard')} className="flex items-center justify-center p-1 hover:bg-primary-container/50 transition-colors rounded-full active:scale-95">
+      <header className="fixed top-0 w-full z-50 bg-surface shadow-sm flex items-center justify-between px-margin-mobile md:px-margin-desktop py-md">
+        <div className="flex items-center gap-md">
+          <button onClick={() => navigate('/student/dashboard')} className="flex items-center justify-center p-xs hover:bg-primary-container/50 transition-colors rounded-full active:scale-95 duration-150">
             <span className="material-symbols-outlined text-primary">arrow_back</span>
           </button>
-          <h1 className="font-headline-md text-headline-md text-primary truncate max-w-[180px] md:max-w-none">Aptitude Test</h1>
+          <h1 className="font-headline-md text-headline-md text-primary truncate max-w-[180px] md:max-w-none">
+            Quantitative Aptitude – Round 1
+          </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-sm md:gap-lg">
           {!isAfterWindow && !submitted && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-error-container text-on-error-container rounded-full font-label-md text-label-md border border-error/20">
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>timer</span>
+            <div className="flex items-center gap-xs px-md py-xs bg-error-container text-on-error-container rounded-full font-label-md text-label-md border border-error/20">
+              <span className="material-symbols-outlined text-[18px]">timer</span>
               <span>{timerDisplay}</span>
             </div>
           )}
+          <button onClick={() => setShowPalette(!showPalette)} className="md:hidden flex items-center justify-center p-xs text-primary">
+            <span className="material-symbols-outlined">{showPalette ? 'close' : 'grid_view'}</span>
+          </button>
         </div>
       </header>
 
-      <main className="pt-[72px] pb-[100px] px-4 md:px-12 flex flex-col md:flex-row gap-6 min-h-screen">
-        <div className="flex-1 flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
+      <main className="pt-[88px] pb-[100px] px-margin-mobile md:px-margin-desktop flex flex-col md:flex-row gap-gutter min-h-screen">
+        <div className="flex-1 flex flex-col gap-lg">
+          <div className="flex flex-col gap-sm">
             <div className="flex justify-between items-end">
               <span className="font-headline-md text-headline-md text-on-surface">
                 {currentQuestion ? `Question ${currentIdx + 1} of ${questions.length}` : 'Loading...'}
               </span>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">{answeredCount}/{questions.length} Answered</span>
             </div>
             <div className="w-full h-2 bg-outline rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: questions.length ? `${((currentIdx + 1) / questions.length) * 100}%` : '0%' }} />
             </div>
+            <p className="text-body-sm text-on-surface-variant font-medium">{answeredCount} of {questions.length} Questions Answered</p>
           </div>
 
           {loading && (
@@ -165,22 +167,23 @@ export default function ExamPage() {
           )}
 
           {currentQuestion && !loading && (
-            <div className="bg-surface-container-lowest border border-outline rounded-2xl p-6 md:p-8 flex flex-col gap-6 custom-shadow">
+            <div className="bg-surface-container-lowest border border-outline rounded-2xl p-lg md:p-xl custom-shadow flex flex-col gap-lg">
               {currentQuestion.image_url && (
                 <div className="w-full rounded-xl overflow-hidden bg-surface-container-low">
                   <img src={currentQuestion.image_url} alt="" className="w-full max-h-48 object-contain" />
                 </div>
               )}
+
               <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">{currentQuestion.text}</p>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-md">
                 {OPTION_LABELS.map(label => {
                   const text = currentQuestion[`option_${label.toLowerCase()}`]
                   if (!text) return null
                   const isSelected = answers[`q${currentQuestion.id}`] === label
                   return (
                     <label key={label}
-                      className={`group flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all active:scale-[0.99] ${isSelected ? 'border-primary bg-primary-container/30' : 'border-outline hover:border-primary-fixed'}`}
+                      className={`group flex items-center gap-md p-md border-2 rounded-2xl cursor-pointer transition-all active:scale-[0.99] ${isSelected ? 'border-primary bg-primary-container/30' : 'border-outline hover:border-primary-fixed'}`}
                       onClick={() => !isReadOnly && saveAnswer(`q${currentQuestion.id}`, label)}>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-primary' : 'border-outline-variant'}`}>
                         {isSelected && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
@@ -195,16 +198,33 @@ export default function ExamPage() {
           )}
         </div>
 
-        <aside className="w-full md:w-80 flex flex-col gap-6 h-fit sticky top-[72px]">
-          <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline">
-            <h3 className="font-label-md text-label-md text-primary uppercase font-bold tracking-wider text-xs mb-3">Question Palette</h3>
-            <div className="grid grid-cols-5 gap-2">
+        <aside className={`w-full md:w-80 flex flex-col gap-lg h-fit sticky top-[88px] ${showPalette ? 'block' : 'hidden md:block'}`}>
+          <div className="bg-surface-container-lowest rounded-2xl shadow-md p-md flex flex-col gap-md relative overflow-hidden border border-outline-variant">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-fixed rounded-full blur-3xl opacity-50 pointer-events-none" />
+
+            <div className="flex items-center justify-between border-b border-outline-variant pb-sm mb-sm z-10 relative">
+              <div className="flex items-center gap-md">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-tertiary-fixed border border-tertiary" />
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">Answered: {answeredCount}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-secondary-fixed border border-secondary" />
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">Pending: {unansweredCount}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-label-sm text-label-sm text-primary font-semibold">Total: {questions.length}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-5 gap-sm z-10 relative">
               {questions.map((q, idx) => {
                 const isAnswered = !!answers[`q${q.id}`]
                 const isCurrent = idx === currentIdx
                 return (
-                  <button key={q.id} onClick={() => setCurrentIdx(idx)}
-                    className={`h-10 w-full rounded-full flex items-center justify-center font-label-md text-label-md transition-transform hover:scale-105 active:scale-95 border ${isCurrent ? 'bg-surface-container-lowest text-on-primary-container border-2 border-primary-container shadow-md relative' : isAnswered ? 'bg-tertiary-fixed text-tertiary border-tertiary/20' : 'bg-secondary-fixed text-secondary border-secondary/20'}`}>
+                  <button key={q.id} onClick={() => { setCurrentIdx(idx); setShowPalette(false) }}
+                    className={`h-10 w-full rounded-full flex items-center justify-center font-label-md text-label-md transition-transform hover:scale-105 active:scale-95 border ${isCurrent ? 'bg-surface-container-lowest text-on-primary-container border-2 border-primary-container shadow-md relative' : isAnswered ? 'bg-tertiary-fixed text-tertiary border-tertiary/20 shadow-sm' : 'bg-secondary-fixed text-secondary border-secondary/20 shadow-sm'}`}>
                     {isCurrent && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary-container rounded-full animate-pulse" />}
                     {idx + 1}
                   </button>
@@ -212,38 +232,39 @@ export default function ExamPage() {
               })}
             </div>
           </div>
-          {!isAfterWindow && !submitted && (
-            <div className="hidden md:flex p-4 bg-surface-bright border border-primary/10 rounded-2xl items-start gap-3">
-              <span className="material-symbols-outlined text-primary">lightbulb</span>
-              <p className="text-body-sm text-on-surface-variant">
-                <strong className="text-primary">Pro Tip:</strong> Use Previous/Next buttons or click palette numbers to navigate.
-              </p>
-            </div>
-          )}
+
+          <div className="hidden md:flex p-md bg-surface-bright border border-primary/10 rounded-2xl items-start gap-md">
+            <span className="material-symbols-outlined text-primary">lightbulb</span>
+            <p className="text-body-sm text-on-surface-variant">
+              <strong className="text-primary">Pro Tip:</strong> You can use the number keys on your keyboard to navigate between questions quickly.
+            </p>
+          </div>
         </aside>
       </main>
 
       {!isAfterWindow && !submitted && questions.length > 0 && (
         <footer className="fixed bottom-0 left-0 w-full z-50 bg-surface-container shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
-          <div className="max-w-screen-2xl mx-auto flex items-center justify-between px-4 py-3">
+          <div className="max-w-screen-2xl mx-auto flex items-center justify-between px-margin-mobile md:px-margin-desktop py-md">
             <button onClick={() => setCurrentIdx(i => Math.max(0, i - 1))} disabled={currentIdx === 0}
-              className="flex items-center gap-1 px-6 py-3 bg-surface-container-highest text-primary hover:bg-primary-container/50 transition-colors rounded-full font-label-md text-label-md active:scale-95 disabled:opacity-40">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_left</span>
+              className="flex items-center gap-xs px-lg py-md bg-surface-container-highest text-primary hover:bg-primary-container/50 transition-colors rounded-full font-label-md text-label-md active:scale-95 duration-150 disabled:opacity-40">
+              <span className="material-symbols-outlined text-[20px]">chevron_left</span>
               <span>Previous</span>
             </button>
-            {currentIdx < questions.length - 1 ? (
-              <button onClick={() => setCurrentIdx(i => Math.min(questions.length - 1, i + 1))}
-                className="flex items-center gap-1 px-6 py-3 bg-primary text-on-primary hover:opacity-90 transition-all rounded-full font-label-md text-label-md active:scale-95">
-                <span>Next</span>
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_right</span>
-              </button>
-            ) : (
-              <button onClick={() => handleSubmit(false)} disabled={submitting}
-                className="flex items-center gap-1 px-6 py-3 bg-primary text-on-primary hover:opacity-90 transition-all rounded-full font-label-md text-label-md active:scale-95 disabled:opacity-60">
-                <span>{submitting ? 'Submitting...' : 'Submit'}</span>
-                {!submitting && <span className="material-symbols-outlined" style={{ fontSize: 20 }}>send</span>}
-              </button>
-            )}
+            <div className="flex items-center gap-md">
+              {currentIdx < questions.length - 1 ? (
+                <button onClick={() => setCurrentIdx(i => Math.min(questions.length - 1, i + 1))}
+                  className="flex items-center gap-xs px-lg py-md bg-primary text-on-primary hover:opacity-90 transition-all rounded-full font-label-md text-label-md active:scale-95 duration-150">
+                  <span>Next</span>
+                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                </button>
+              ) : (
+                <button onClick={() => handleSubmit(false)} disabled={submitting}
+                  className="flex items-center gap-xs px-lg py-md bg-primary text-on-primary hover:opacity-90 transition-all rounded-full font-label-md text-label-md active:scale-95 duration-150 disabled:opacity-60">
+                  <span>{submitting ? 'Submitting...' : 'Submit'}</span>
+                  {!submitting && <span className="material-symbols-outlined text-[20px]">send</span>}
+                </button>
+              )}
+            </div>
           </div>
         </footer>
       )}

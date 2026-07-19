@@ -192,40 +192,55 @@ def student_signin_view(request):
         )
 
     from django.contrib.auth import get_user_model
+    from django.db import IntegrityError
     User = get_user_model()
 
-    user = None
+    try:
+        user = None
 
-    if User.objects.filter(roll_number=roll_number).exists():
-        user = User.objects.get(roll_number=roll_number)
-        user.full_name = full_name
-        user.email = email
-        if department:
-            user.department = department
-        user.save()
-        logger.info(f"[SIGNIN] Existing student signed in: {email}")
+        if User.objects.filter(roll_number=roll_number).exists():
+            user = User.objects.get(roll_number=roll_number)
+            user.full_name = full_name
+            user.email = email
+            if department:
+                user.department = department
+            user.save()
+            logger.info(f"[SIGNIN] Existing student signed in: {email}")
 
-    elif User.objects.filter(email=email).exists():
-        user = User.objects.get(email=email)
-        user.full_name = full_name
-        user.roll_number = roll_number
-        if department:
-            user.department = department
-        user.save()
-        logger.info(f"[SIGNIN] Existing student signed in by email: {email}")
+        elif User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
+            user.full_name = full_name
+            user.roll_number = roll_number
+            if department:
+                user.department = department
+            user.save()
+            logger.info(f"[SIGNIN] Existing student signed in by email: {email}")
 
-    else:
-        user = User(
-            email=email,
-            full_name=full_name,
-            roll_number=roll_number,
-            department=department,
-            is_student=True,
-            is_active=True,
+        else:
+            user = User(
+                email=email,
+                full_name=full_name,
+                roll_number=roll_number,
+                department=department,
+                is_student=True,
+                is_active=True,
+            )
+            user.set_unusable_password()
+            user.save()
+            logger.info(f"[SIGNIN] New student auto-created: {email}")
+
+    except IntegrityError as e:
+        logger.error(f"[SIGNIN] IntegrityError for {email} / {roll_number}: {str(e)}")
+        return Response(
+            {"detail": "An account with this email or roll number already belongs to another student. Please contact admin."},
+            status=status.HTTP_409_CONFLICT
         )
-        user.set_unusable_password()
-        user.save()
-        logger.info(f"[SIGNIN] New student auto-created: {email}")
+    except Exception as e:
+        logger.error(f"[SIGNIN] Unexpected error for {email}: {str(e)}")
+        return Response(
+            {"detail": "Sign in failed. Please try again."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
     tokens = get_tokens_for_user(user)
 

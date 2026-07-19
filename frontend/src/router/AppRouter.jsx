@@ -16,6 +16,9 @@ import Register from '../pages/student/Register'
 import AnswerReview from '../pages/student/AnswerReview'
 import StudentDashboard from '../pages/student/StudentDashboard'
 import StudentResult from '../pages/student/StudentResult'
+import AssessmentDetails from '../pages/student/AssessmentDetails'
+import SubmissionProcessing from '../pages/student/SubmissionProcessing'
+import PreviousQuestions from '../pages/student/PreviousQuestions'
 
 export default function AppRouter() {
   return (
@@ -40,6 +43,16 @@ export default function AppRouter() {
             <ExamPage />
           </ProtectedRoute>
         } />
+        <Route path="/student/assessment-details" element={
+          <ProtectedRoute requiredRole="is_student">
+            <AssessmentDetails />
+          </ProtectedRoute>
+        } />
+        <Route path="/student/submission-processing" element={
+          <ProtectedRoute requiredRole="is_student">
+            <SubmissionProcessing />
+          </ProtectedRoute>
+        } />
         <Route path="/student/result" element={
           <ProtectedRoute requiredRole="is_student">
             <StudentResult />
@@ -53,6 +66,11 @@ export default function AppRouter() {
         <Route path="/student/review" element={
           <ProtectedRoute requiredRole="is_student">
             <AnswerReview />
+          </ProtectedRoute>
+        } />
+        <Route path="/student/previous-questions" element={
+          <ProtectedRoute requiredRole="is_student">
+            <PreviousQuestions />
           </ProtectedRoute>
         } />
         <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />

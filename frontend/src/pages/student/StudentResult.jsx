@@ -3,56 +3,21 @@ import { useNavigate } from 'react-router-dom'
 import StudentBottomNav from '../../components/StudentBottomNav'
 import { examAPI, studentAPI } from '../../api/client'
 
-function ReviewQuestion({ q, userAnswer, correctAnswer, index }) {
-  const options = [
-    { label: 'A', text: q.option_a },
-    { label: 'B', text: q.option_b },
-    { label: 'C', text: q.option_c },
-    { label: 'D', text: q.option_d },
-  ].filter(o => o.text)
-
-  const isCorrect = userAnswer === correctAnswer
-  const isSkipped = !userAnswer
-
-  return (
-    <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline">
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`font-label-sm text-label-sm px-2.5 py-1 rounded-full font-semibold ${isSkipped ? 'bg-surface-container-high text-on-surface-variant' : isCorrect ? 'bg-tertiary-container text-tertiary' : 'bg-error-container text-error'}`}>
-          Q{index + 1} {isSkipped ? 'Skipped' : isCorrect ? 'Correct' : 'Wrong'}
-        </span>
-      </div>
-      <p className="font-body-md text-body-md text-on-surface mb-3 leading-relaxed">{q.text}</p>
-      {q.image_url && (
-        <img src={q.image_url} alt="" className="w-full rounded-xl mb-3 max-h-48 object-contain" />
-      )}
-      <div className="flex flex-col gap-2">
-        {options.map(opt => {
-          const isUserChoice = userAnswer === opt.label
-          const isCorrectOpt = opt.label === correctAnswer
-          let cls = 'border-outline bg-transparent text-on-surface'
-          if (isCorrectOpt) cls = 'border-tertiary bg-tertiary-container/30 text-on-surface'
-          if (isUserChoice && !isCorrect) cls = 'border-error bg-error-container/30 text-on-error-container'
-          return (
-            <div key={opt.label} className={`flex items-center gap-3 px-3 py-2.5 border-2 rounded-xl transition-all ${cls}`}>
-              <span className="font-label-md text-label-md font-semibold w-5">{opt.label}</span>
-              <span className="font-body-md text-body-md flex-1">{opt.text}</span>
-              {isCorrectOpt && <span className="material-symbols-outlined text-tertiary" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-              {isUserChoice && !isCorrect && <span className="material-symbols-outlined text-error" style={{ fontSize: 18 }}>cancel</span>}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 export default function StudentResult() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('loading')
   const [review, setReview] = useState(null)
   const [questions, setQuestions] = useState([])
+  const [user, setUser] = useState(null)
 
   const today = new Date().toISOString().slice(0, 10)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user')
+    if (stored) {
+      try { setUser(JSON.parse(stored)) } catch { /* silent */ }
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -93,44 +58,56 @@ export default function StudentResult() {
 
   if (status === 'submitted' || status === 'before_window') {
     return (
-      <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-        <main className="w-full max-w-md flex flex-col items-center gap-8 pb-8">
-          <section className="flex flex-col items-center text-center gap-3 mt-8" style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="w-24 h-24 bg-tertiary-container rounded-full flex items-center justify-center mb-2 shadow-md shadow-primary/10">
+      <div className="min-h-screen bg-surface flex flex-col justify-center items-center p-md">
+        <main className="w-full max-w-md flex flex-col items-center gap-xl pb-2xl">
+          <section className="flex flex-col items-center text-center gap-sm mt-xl" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="w-24 h-24 bg-tertiary-container rounded-full flex items-center justify-center mb-sm shadow-md shadow-primary/10">
               <span className="material-symbols-outlined text-tertiary" style={{ fontSize: 48, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             </div>
             <h1 className="font-headline-lg text-headline-lg text-on-surface">Test Submitted!</h1>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-[280px]">Your responses have been successfully recorded.</p>
           </section>
 
-          <section className="w-full bg-surface-container rounded-xl p-6 shadow-sm flex flex-col gap-4">
-            <h2 className="font-headline-md text-headline-md text-tertiary border-b border-outline pb-3">Submission Overview</h2>
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-between items-center py-1">
+          <section className="w-full bg-surface-container rounded-xl p-lg shadow-sm shadow-primary/5 flex flex-col gap-md">
+            <h2 className="font-headline-md text-headline-md text-tertiary border-b border-outline pb-sm">Submission Overview</h2>
+            <div className="flex flex-col gap-sm">
+              {user?.full_name && (
+                <div className="flex justify-between items-center py-xs">
+                  <span className="font-body-md text-body-md text-on-surface-variant">Student Name</span>
+                  <span className="font-label-md text-label-md text-on-surface">{user.full_name}</span>
+                </div>
+              )}
+              {user?.roll_number && (
+                <div className="flex justify-between items-center py-xs">
+                  <span className="font-body-md text-body-md text-on-surface-variant">Reg No</span>
+                  <span className="font-label-md text-label-md text-on-surface">{user.roll_number}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-xs">
                 <span className="font-body-md text-body-md text-on-surface-variant">Status</span>
                 <span className="font-label-md text-label-md text-on-surface">Submitted</span>
               </div>
-              <div className="flex justify-between items-center py-1">
+              <div className="flex justify-between items-center py-xs">
                 <span className="font-body-md text-body-md text-on-surface-variant">Date</span>
                 <span className="font-label-md text-label-md text-on-surface">{today}</span>
               </div>
-              <div className="flex justify-between items-center py-1">
+              <div className="flex justify-between items-center py-xs">
                 <span className="font-body-md text-body-md text-on-surface-variant">Result Available</span>
                 <span className="font-label-md text-label-md text-on-surface">After 2:00 PM IST</span>
               </div>
             </div>
           </section>
 
-          <section className="w-full bg-secondary-container rounded-lg p-4 flex gap-3 items-start shadow-sm">
-            <span className="material-symbols-outlined text-secondary mt-0.5">info</span>
-            <div className="flex flex-col gap-1">
+          <section className="w-full bg-secondary-container rounded-lg p-md flex gap-md items-start shadow-sm shadow-primary/5">
+            <span className="material-symbols-outlined text-secondary mt-xs">info</span>
+            <div className="flex flex-col gap-xs">
               <h3 className="font-label-md text-label-md text-on-secondary-container font-bold">Scores Gated Until Deadline</h3>
-              <p className="font-body-sm text-body-sm text-on-secondary-container/80">Your score and answer key will be unlocked only after the official exam deadline passes for all students.</p>
+              <p className="font-body-sm text-body-sm text-on-secondary-container/80">Your score and answer key will be unlocked only after the official exam deadline passes for all students. Kindly visit after the deadline period.</p>
             </div>
           </section>
 
           <button onClick={() => navigate('/student/dashboard')}
-            className="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full shadow-md shadow-primary/20 hover:bg-primary/90 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2">
+            className="w-full bg-primary text-on-primary font-label-md text-label-md py-md rounded-full shadow-md shadow-primary/20 hover:bg-primary/90 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-sm">
             <span className="material-symbols-outlined">home</span>
             Return to Portal
           </button>
@@ -158,7 +135,7 @@ export default function StudentResult() {
 
   if (status === 'reviewed' && review) {
     const score = review.score
-    const total = review.total_questions || 20
+    const total = review.total_questions || 10
     const correct = score
     const userAnswers = review.answers || {}
     const correctAnswers = review.correct_answers || {}
@@ -171,9 +148,9 @@ export default function StudentResult() {
     questions.forEach(q => { questionMap[q.id] = q })
 
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-screen bg-surface pb-24">
         <header className="bg-surface-container-lowest sticky top-0 z-30 border-b border-outline">
-          <div className="flex items-center gap-3 px-4 h-14">
+          <div className="flex items-center gap-3 px-margin-mobile h-14">
             <button onClick={() => navigate('/student/dashboard')} className="p-2 rounded-full hover:bg-surface-container-high transition-colors">
               <span className="material-symbols-outlined text-on-surface">arrow_back</span>
             </button>
@@ -181,27 +158,27 @@ export default function StudentResult() {
           </div>
         </header>
 
-        <main className="px-4 py-4 max-w-lg mx-auto flex flex-col gap-4">
-          <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline text-center">
+        <main className="px-margin-mobile py-lg max-w-lg mx-auto flex flex-col gap-md">
+          <div className="bg-surface-container-lowest rounded-xl p-lg border border-outline text-center">
             <div className={`w-24 h-24 rounded-full border-4 ${borderColor} flex flex-col items-center justify-center mx-auto mb-3`}>
               <span className={`font-headline-lg text-headline-lg font-bold ${scoreColor}`}>{score}</span>
               <span className="font-label-sm text-label-sm text-on-surface-variant">/{total}</span>
             </div>
-            <p className="font-body-sm text-body-sm text-on-surface-variant m-0">Your Score</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">Your Score</p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-tertiary-container rounded-xl p-3 text-center">
-              <p className="font-headline-md text-headline-md text-tertiary m-0">{correct}</p>
-              <p className="font-label-sm text-label-sm text-tertiary m-0 mt-0.5 uppercase">Correct</p>
+              <p className="font-headline-md text-headline-md text-tertiary">{correct}</p>
+              <p className="font-label-sm text-label-sm text-tertiary uppercase">Correct</p>
             </div>
             <div className="bg-error-container rounded-xl p-3 text-center">
-              <p className="font-headline-md text-headline-md text-error m-0">{Math.max(wrong, 0)}</p>
-              <p className="font-label-sm text-label-sm text-error m-0 mt-0.5 uppercase">Wrong</p>
+              <p className="font-headline-md text-headline-md text-error">{Math.max(wrong, 0)}</p>
+              <p className="font-label-sm text-label-sm text-error uppercase">Wrong</p>
             </div>
             <div className="bg-surface-container-high rounded-xl p-3 text-center">
-              <p className="font-headline-md text-headline-md text-on-surface-variant m-0">{Math.max(skipped, 0)}</p>
-              <p className="font-label-sm text-label-sm text-on-surface-variant m-0 mt-0.5 uppercase">Skipped</p>
+              <p className="font-headline-md text-headline-md text-on-surface-variant">{Math.max(skipped, 0)}</p>
+              <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">Skipped</p>
             </div>
           </div>
 
@@ -210,7 +187,44 @@ export default function StudentResult() {
               const num = parseInt(qid.replace('q', ''), 10)
               const q = questionMap[num]
               if (!q) return null
-              return <ReviewQuestion key={qid} q={q} userAnswer={userAnswers[qid] || null} correctAnswer={correctAnswers[qid]} index={idx} />
+              const userAns = userAnswers[qid] || null
+              const correctAns = correctAnswers[qid]
+              const isCorrect = userAns === correctAns
+              const isSkipped = !userAns
+
+              return (
+                <div key={qid} className="bg-surface-container-lowest rounded-xl p-lg border border-outline flex flex-col gap-md">
+                  <div className="flex justify-between items-start gap-4">
+                    <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Question {idx + 1}</h2>
+                    <span className={`font-label-sm text-label-sm px-3 py-1 rounded-full ${isSkipped ? 'bg-surface-container-high text-on-surface-variant' : isCorrect ? 'bg-tertiary-container text-tertiary' : 'bg-error-container text-error'}`}>
+                      {isSkipped ? 'Skipped' : isCorrect ? 'Correct' : 'Wrong'}
+                    </span>
+                  </div>
+
+                  <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">{q.text}</p>
+
+                  <div className="space-y-sm">
+                    {userAns && (
+                      <div className={`w-full flex items-center justify-between p-md border rounded-xl ${isCorrect ? 'bg-tertiary-container border-tertiary/20' : 'bg-error-container border-error/20'}`}>
+                        <div className="flex flex-col gap-1">
+                          <span className={`font-label-sm text-label-sm uppercase tracking-wider ${isCorrect ? 'text-on-tertiary-container/70' : 'text-on-error-container/70'}`}>Your Answer</span>
+                          <span className={`font-headline-md text-headline-md ${isCorrect ? 'text-on-tertiary-container' : 'text-on-error-container'}`}>{userAns} {q[`option_${userAns.toLowerCase()}`]}</span>
+                        </div>
+                        <span className={`material-symbols-outlined font-bold text-2xl ${isCorrect ? 'text-tertiary' : 'text-error'}`} style={{ fontVariationSettings: isCorrect ? "'FILL' 1" : undefined }}>{isCorrect ? 'check' : 'close'}</span>
+                      </div>
+                    )}
+                    {!isCorrect && (
+                      <div className="w-full flex items-center justify-between p-md bg-tertiary-container border border-tertiary/20 rounded-xl">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-label-sm text-label-sm text-on-tertiary-container/70 uppercase tracking-wider">Correct Answer</span>
+                          <span className="font-headline-md text-headline-md text-on-tertiary-container">{correctAns} {q[`option_${correctAns.toLowerCase()}`]}</span>
+                        </div>
+                        <span className="material-symbols-outlined text-tertiary font-bold text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
             })}
           </div>
         </main>
@@ -224,8 +238,8 @@ export default function StudentResult() {
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
       <div className="text-center">
         <span className="material-symbols-outlined text-secondary" style={{ fontSize: 36 }}>info</span>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-2">Results will appear after 2:00 PM IST.</p>
-        <button onClick={() => navigate('/student/dashboard')} className="mt-4 bg-primary text-on-primary font-label-md text-label-md py-3 px-8 rounded-full shadow-md hover:opacity-90 active:scale-95 transition-all">
+        <p className="mt-2 text-body-md text-on-surface-variant">No results to display yet.</p>
+        <button onClick={() => navigate('/student/dashboard')} className="mt-4 bg-primary text-on-primary font-label-md text-label-md py-2 px-6 rounded-full">
           Back to Dashboard
         </button>
       </div>

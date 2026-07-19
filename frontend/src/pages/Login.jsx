@@ -35,29 +35,47 @@ const DEPARTMENT_GROUPS = [
 
 const OTHERS_VALUE = '__others__'
 
-const MissingFieldsModal = ({ missingLabels, onClose }) => (
-  <div onClick={onClose} className="fixed inset-0 bg-black/45 flex items-center justify-center z-[1000] p-6">
-    <div onClick={e => e.stopPropagation()} className="bg-surface-container rounded-2xl p-6 max-w-sm w-full shadow-xl flex flex-col gap-3.5">
-      <div className="flex items-center gap-2.5">
-        <div className="w-10 h-10 rounded-full bg-error-container flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-error" style={{ fontSize: 22 }}>error</span>
-        </div>
-        <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Missing Information</h2>
+function Field({ label, value, onChange, placeholder, type = 'text', showCheck, maxLength, inputMode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{label}</label>
+      <div className="bg-tertiary-fixed px-3 py-2.5 rounded-lg border border-tertiary/20 text-on-surface font-body-md flex items-center gap-2 transition-all focus-within:border-tertiary">
+        <input
+          type={type} value={value} onChange={e => onChange(e.target.value)}
+          placeholder={placeholder} maxLength={maxLength} inputMode={inputMode}
+          className="bg-transparent border-none outline-none font-body-md text-body-md text-on-surface w-full placeholder:text-on-surface-variant/50"
+        />
+        {showCheck && value && <span className="material-symbols-outlined text-tertiary text-sm shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
       </div>
-      <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-        Please fill in the following field{missingLabels.length > 1 ? 's' : ''} before signing in:
-      </p>
-      <ul className="m-0 pl-5 flex flex-col gap-1">
-        {missingLabels.map(label => (
-          <li key={label} className="font-body-sm text-body-sm text-on-error-container font-medium">{label}</li>
-        ))}
-      </ul>
-      <button onClick={onClose} className="mt-2 w-full bg-primary text-on-primary border-none rounded-full py-3 font-headline-md text-body-sm font-semibold cursor-pointer">
-        Got it
-      </button>
     </div>
-  </div>
-)
+  )
+}
+
+function MissingFieldsModal({ missingLabels, onClose }) {
+  return (
+    <div onClick={onClose} className="fixed inset-0 bg-black/45 flex items-center justify-center z-[1000] p-6">
+      <div onClick={e => e.stopPropagation()} className="bg-surface-container rounded-2xl p-6 max-w-sm w-full shadow-xl flex flex-col gap-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-full bg-error-container flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-error" style={{ fontSize: 22 }}>error</span>
+          </div>
+          <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Missing Information</h2>
+        </div>
+        <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+          Please fill in the following field{missingLabels.length > 1 ? 's' : ''} before signing in:
+        </p>
+        <ul className="m-0 pl-5 flex flex-col gap-1">
+          {missingLabels.map(label => (
+            <li key={label} className="font-body-sm text-body-sm text-on-error-container font-medium">{label}</li>
+          ))}
+        </ul>
+        <button onClick={onClose} className="mt-2 w-full bg-primary text-on-primary border-none rounded-full py-3 font-headline-md text-body-sm font-semibold cursor-pointer">
+          Got it
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -138,24 +156,10 @@ export default function LoginPage() {
     }
   }
 
-  const Field = ({ label, value, onChange, placeholder, type = 'text', showCheck, maxLength, inputMode }) => (
-    <div className="flex flex-col gap-1">
-      <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{label}</label>
-      <div className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md flex items-center gap-2">
-        <input
-          type={type} value={value} onChange={e => onChange(e.target.value)}
-          placeholder={placeholder} maxLength={maxLength} inputMode={inputMode}
-          className="bg-transparent border-none outline-none font-body-md text-body-md text-on-surface w-full placeholder:text-on-surface-variant/50"
-        />
-        {showCheck && value && <span className="material-symbols-outlined text-tertiary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-      </div>
-    </div>
-  )
-
   return (
     <div className="min-h-screen flex flex-col font-body-md bg-background text-on-background">
       <header className="bg-surface top-0 z-40 sticky">
-        <div className="flex justify-between items-center w-full px-4 h-16">
+        <div className="flex justify-between items-center w-full px-margin-mobile h-16">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg shadow-sm overflow-hidden">
               <img src="/app-logo.png" alt="Apptist" className="w-full h-full object-cover" />
@@ -168,15 +172,17 @@ export default function LoginPage() {
         </div>
       </header>
 
-      <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
+      <main className="flex-grow flex flex-col items-center justify-center px-margin-mobile py-xl relative">
         <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary-container to-transparent -z-10 opacity-50" />
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary-fixed rounded-full blur-3xl opacity-30 -z-10" />
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-secondary-container rounded-full blur-3xl opacity-20 -z-10" />
 
-        <div className="w-full max-w-md mx-auto space-y-6">
-          <div className="flex flex-col items-center text-center space-y-2 mb-4">
-            <div className="w-32 h-32 rounded-full bg-surface-container-lowest shadow-md flex items-center justify-center overflow-hidden border-4 border-white">
-              <img src="/college-logo.png" alt="NGI" className="w-full h-full object-cover object-center" />
+        <div className="w-full max-w-md mx-auto space-y-lg">
+          <div className="flex flex-col items-center text-center space-y-sm mb-md">
+            <div className="relative">
+              <div className="w-32 h-32 rounded-full bg-surface-container-lowest shadow-md flex items-center justify-center overflow-hidden border-4 border-white">
+                <img src="/college-logo.png" alt="NGI" className="w-full h-full object-cover object-center" />
+              </div>
             </div>
             <div className="space-y-1">
               <h1 className="font-headline-lg text-headline-lg text-on-surface">Welcome</h1>
@@ -184,14 +190,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="bg-surface-container-lowest rounded-lg shadow-md p-4 space-y-3 border-outline-variant border">
+          <div className="bg-surface-container-lowest rounded-lg shadow-md p-md space-y-sm glass-card border-outline-variant border">
             <Field label="Student Full Name" value={form.full_name} onChange={update('full_name')} placeholder="Enter your full name" showCheck />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-sm">
               <Field label="Reg No." value={form.roll_number} onChange={update('roll_number')} placeholder="NGI2026CS045" showCheck />
               <div className="flex flex-col gap-1">
                 <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Department</label>
                 <select value={form.department} onChange={e => update('department')(e.target.value)}
-                  className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm truncate outline-none">
+                  className="bg-tertiary-fixed px-3 py-2.5 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm outline-none min-h-[40px] w-full">
                   <option value="">Select</option>
                   {DEPARTMENT_GROUPS.map(group => (
                     <optgroup key={group.school} label={group.school}>
@@ -205,11 +211,11 @@ export default function LoginPage() {
             {form.department === OTHERS_VALUE && (
               <Field label="Please specify your course" value={form.custom_department} onChange={update('custom_department')} placeholder="Type your course/department" showCheck />
             )}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-sm">
               <div className="flex flex-col gap-1">
                 <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Year</label>
                 <select value={form.year} onChange={e => update('year')(e.target.value)}
-                  className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm truncate outline-none">
+                  className="bg-tertiary-fixed px-3 py-2.5 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm outline-none min-h-[40px] w-full">
                   <option value="">Select</option>
                   <option value="1st Year">1st Year</option>
                   <option value="2nd Year">2nd Year</option>
@@ -219,7 +225,7 @@ export default function LoginPage() {
               <div className="flex flex-col gap-1">
                 <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Semester</label>
                 <select value={form.semester} onChange={e => update('semester')(e.target.value)}
-                  className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm truncate outline-none">
+                  className="bg-tertiary-fixed px-3 py-2.5 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm outline-none min-h-[40px] w-full">
                   <option value="">Select</option>
                   <option value="Semester 1">Sem 1</option>
                   <option value="Semester 2">Sem 2</option>
