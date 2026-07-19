@@ -1,129 +1,466 @@
 {
   "info": {
-    "name": "Aptitude Test Platform API",
-    "description": "API collection for Aptitude Test Platform — covers auth, questions, submit, and health endpoints.",
+    "name": "Apptist — NGI Aptitude Test Platform API",
+    "description": "Complete API collection for Apptist Portal — covers auth, exams, student dashboard, admin management, and internal cron endpoints.\n\nAll times are IST (Asia/Kolkata). JWT Bearer token required for authenticated endpoints.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Login",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"student1@test.com\",\n  \"password\": \"testpass123\"\n}",
-          "options": { "raw": { "language": "json" } }
+      "name": "Public Endpoints",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health", ""]
+            },
+            "description": "Zero-auth, zero-DB keep-alive endpoint. Used by cron-job.org every 10 min to prevent Render spin-down."
+          }
         },
-        "url": {
-          "raw": "{{base_url}}/api/auth/login/",
-          "host": ["{{base_url}}"],
-          "path": ["api", "auth", "login", ""]
+        {
+          "name": "Login (Email + Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@test.com\",\n  \"password\": \"testpass123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login", ""]
+            },
+            "description": "Email/password login. Returns access + refresh JWT tokens + user object. Returns 403 if user is inactive."
+          }
         },
-        "description": "Returns access + refresh JWT tokens. Use access token in subsequent requests."
-      }
+        {
+          "name": "Register (Student with Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newstudent@test.com\",\n  \"password\": \"pass123456\",\n  \"full_name\": \"John Doe\",\n  \"roll_number\": \"NGI-CS-2026-001\",\n  \"department\": \"Computer Science\",\n  \"mobile\": \"9876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register", ""]
+            },
+            "description": "Creates a new student account with password. Returns JWT tokens + user object. Returns 400 if email or roll_number already exists."
+          }
+        },
+        {
+          "name": "Student Sign-In (Passwordless)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Jane Smith\",\n  \"roll_number\": \"NGI-CS-2026-042\",\n  \"email\": \"jane@test.com\",\n  \"department\": \"Computer Science\",\n  \"mobile\": \"9876543210\",\n  \"year\": \"3\",\n  \"semester\": \"5\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/student-signin/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "student-signin", ""]
+            },
+            "description": "Passwordless sign-in. Auto-creates student account if not found. Matches by roll_number or email. Returns JWT tokens."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"<paste_refresh_token>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh", ""]
+            },
+            "description": "Returns a new access token using a valid refresh token. Old refresh token is blacklisted after rotation."
+          }
+        }
+      ]
     },
     {
-      "name": "Refresh Token",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"refresh\": \"<your_refresh_token>\"\n}",
-          "options": { "raw": { "language": "json" } }
+      "name": "Student Endpoints (JWT + IsStudentUser)",
+      "item": [
+        {
+          "name": "Get Questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tests/questions/?date={{exam_date}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tests", "questions", ""],
+              "query": [
+                { "key": "date", "value": "{{exam_date}}" }
+              ]
+            },
+            "description": "Redis cache-first. During exam window (10AM-2PM): returns 503 on cache miss. Outside window: DB fallback. Returns list of 10 questions."
+          }
         },
-        "url": {
-          "raw": "{{base_url}}/api/auth/refresh/",
-          "host": ["{{base_url}}"],
-          "path": ["api", "auth", "refresh", ""]
+        {
+          "name": "Submit Answers",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exam_date\": \"{{exam_date}}\",\n  \"answers\": {\n    \"q1\": \"A\",\n    \"q2\": \"B\",\n    \"q3\": \"C\",\n    \"q4\": \"D\",\n    \"q5\": \"A\",\n    \"q6\": \"B\",\n    \"q7\": \"C\",\n    \"q8\": \"D\",\n    \"q9\": \"A\",\n    \"q10\": \"B\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tests/submit/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tests", "submit", ""]
+            },
+            "description": "Atomic, idempotent submission. Returns 201 on create, 200 on re-submit, 409 if window closed (after 2PM). Uses transaction.atomic() + update_or_create."
+          }
         },
-        "description": "Returns a new access token using a valid refresh token."
-      }
+        {
+          "name": "Get Answer Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tests/answers/?date={{exam_date}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tests", "answers", ""],
+              "query": [
+                { "key": "date", "value": "{{exam_date}}" }
+              ]
+            },
+            "description": "Time-gated: only accessible 2PM-7PM IST. Returns correct_answers dict + opens_at/closes_at. Returns 403 outside window."
+          }
+        },
+        {
+          "name": "Student Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/student/dashboard/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "dashboard", ""]
+            },
+            "description": "Returns today_status (before_window/in_progress/submitted/reviewed/missed), today's score, recent 7-day scores, total exams taken, and average score."
+          }
+        },
+        {
+          "name": "Student Review",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/student/review/?date={{exam_date}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "review", ""],
+              "query": [
+                { "key": "date", "value": "{{exam_date}}" }
+              ]
+            },
+            "description": "Returns submission answers, correct_answers, score, and window_status. Score only populated during 2PM-7PM window. Returns 404 if no submission."
+          }
+        },
+        {
+          "name": "Student Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/student/leaderboard/?top=25",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "leaderboard", ""],
+              "query": [
+                { "key": "top", "value": "25" }
+              ]
+            },
+            "description": "Returns rankings list for the latest exam date with rank, name, roll_number, score. Also returns total_examinees count."
+          }
+        }
+      ]
     },
     {
-      "name": "Get Questions",
-      "request": {
-        "method": "GET",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" }
-        ],
-        "url": {
-          "raw": "{{base_url}}/api/tests/questions/?date={{exam_date}}",
-          "host": ["{{base_url}}"],
-          "path": ["api", "tests", "questions", ""],
-          "query": [
-            { "key": "date", "value": "{{exam_date}}" }
-          ]
+      "name": "Admin Endpoints (JWT + IsTeacherUser)",
+      "item": [
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard-stats/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard-stats", ""]
+            },
+            "description": "Returns today's stats: total_students, tests_completed, questions_live."
+          }
         },
-        "description": "Redis cache-first. During exam window (10AM-2PM): returns 503 on cache miss. Outside window: DB fallback."
-      }
+        {
+          "name": "Upload Questions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "date", "value": "{{exam_date}}", "type": "text" },
+                { "key": "questions", "value": "[{\"text\":\"What is 2+2?\",\"option_a\":\"3\",\"option_b\":\"4\",\"option_c\":\"5\",\"option_d\":\"6\",\"correct_answer\":\"B\"},{\"text\":\"Capital of India?\",\"option_a\":\"Mumbai\",\"option_b\":\"Delhi\",\"option_c\":\"Chennai\",\"option_d\":\"Kolkata\",\"correct_answer\":\"B\"},{\"text\":\"Largest planet?\",\"option_a\":\"Earth\",\"option_b\":\"Mars\",\"option_c\":\"Jupiter\",\"option_d\":\"Saturn\",\"correct_answer\":\"C\"},{\"text\":\"10 x 5 = ?\",\"option_a\":\"40\",\"option_b\":\"45\",\"option_c\":\"50\",\"option_d\":\"55\",\"correct_answer\":\"C\"},{\"text\":\"Speed of light?\",\"option_a\":\"3x10^6\",\"option_b\":\"3x10^7\",\"option_c\":\"3x10^8\",\"option_d\":\"3x10^9\",\"correct_answer\":\"C\"},{\"text\":\"H2O is?\",\"option_a\":\"Oxygen\",\"option_b\":\"Hydrogen\",\"option_c\":\"Water\",\"option_d\":\"Carbon\",\"correct_answer\":\"C\"},{\"text\":\"DNA stands for?\",\"option_a\":\"Deoxyribonucleic Acid\",\"option_b\":\"Dynamic Network Access\",\"option_c\":\"Data Network Application\",\"option_d\":\"Digital Node Architecture\",\"correct_answer\":\"A\"},{\"text\":\"Who invented Python?\",\"option_a\":\"Guido van Rossum\",\"option_b\":\"James Gosling\",\"option_c\":\"Bjarne Stroustrup\",\"option_d\":\"Dennis Ritchie\",\"correct_answer\":\"A\"},{\"text\":\"HTML is a?\",\"option_a\":\"Programming Language\",\"option_b\":\"Markup Language\",\"option_c\":\"Scripting Language\",\"option_d\":\"Database\",\"correct_answer\":\"B\"},{\"text\":\"SQL stands for?\",\"option_a\":\"Structured Query Language\",\"option_b\":\"Simple Query Language\",\"option_c\":\"Standard Query Logic\",\"option_d\":\"System Query Language\",\"correct_answer\":\"A\"}]", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/upload-questions/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "upload-questions", ""]
+            },
+            "description": "Multipart form upload. Requires exactly 10 questions. Each must have text, option_a-d, correct_answer (A/B/C/D). Creates Question + AnswerKey records. Triggers stale CSV purge signal."
+          }
+        },
+        {
+          "name": "List Questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/?date={{exam_date}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", ""],
+              "query": [
+                { "key": "date", "value": "{{exam_date}}", "description": "Optional: filter by exam date" },
+                { "key": "search", "value": "", "description": "Optional: search question text" }
+              ]
+            },
+            "description": "Returns all questions. Optional filters: ?date=YYYY-MM-DD, ?search=keyword."
+          }
+        },
+        {
+          "name": "Get Question Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "1", ""]
+            },
+            "description": "Returns full details of a single question by ID."
+          }
+        },
+        {
+          "name": "Delete Question",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "1", ""]
+            },
+            "description": "Deletes a question by ID. Returns 204 on success."
+          }
+        },
+        {
+          "name": "Admin Rankings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/rankings/?period=weekly&top=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "rankings", ""],
+              "query": [
+                { "key": "period", "value": "weekly", "description": "daily or weekly" },
+                { "key": "top", "value": "10", "description": "Number of top students to return" }
+              ]
+            },
+            "description": "Returns daily or weekly rankings. Daily: from DailyScore. Weekly: from WeeklyLeaderboard."
+          }
+        },
+        {
+          "name": "Admin Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reports/?range=weekly",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "reports", ""],
+              "query": [
+                { "key": "range", "value": "weekly", "description": "weekly, monthly, or custom (use from/to)" },
+                { "key": "from", "value": "", "description": "Custom start date (YYYY-MM-DD)" },
+                { "key": "to", "value": "", "description": "Custom end date (YYYY-MM-DD)" }
+              ]
+            },
+            "description": "Returns total_students, total_attended, total_absent, and student_performance list for the date range."
+          }
+        },
+        {
+          "name": "Download Report CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/download-report/{{exam_date}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "download-report", "{{exam_date}}", ""]
+            },
+            "description": "Downloads Master_Report_YYYY-MM-DD.csv. Schedules auto-deletion in 4 hours via ScheduledFileDeletion model. Returns 404 if report not yet generated."
+          }
+        }
+      ]
     },
     {
-      "name": "Submit Answers",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{access_token}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"exam_date\": \"{{exam_date}}\",\n  \"answers\": {\n    \"q1\": \"A\",\n    \"q2\": \"B\",\n    \"q3\": \"C\",\n    \"q4\": \"D\",\n    \"q5\": \"A\"\n  }\n}",
-          "options": { "raw": { "language": "json" } }
+      "name": "Internal Cron Endpoints (X-Cron-Secret)",
+      "item": [
+        {
+          "name": "Warm Cache",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" },
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "date", "value": "{{exam_date}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/internal/warm-cache/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "warm-cache", ""]
+            },
+            "description": "Cron-triggered at 9:45 AM IST. Loads questions into Upstash Redis cache. Returns questions_loaded count."
+          }
         },
-        "url": {
-          "raw": "{{base_url}}/api/tests/submit/",
-          "host": ["{{base_url}}"],
-          "path": ["api", "tests", "submit", ""]
+        {
+          "name": "Process Deletions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/internal/process-deletions/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "process-deletions", ""]
+            },
+            "description": "Cron-triggered every 30 min. Deletes overdue CSV files from disk. Handles FileNotFoundError gracefully. Returns deleted count."
+          }
         },
-        "description": "Atomic, idempotent submission. Returns 201 on create, 200 on re-submit, 409 if window closed."
-      }
-    },
-    {
-      "name": "Health Check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/api/health/",
-          "host": ["{{base_url}}"],
-          "path": ["api", "health", ""]
+        {
+          "name": "Cleanup Day",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" },
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "date", "value": "{{exam_date}}", "description": "Optional. Defaults to yesterday." }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/internal/cleanup-day/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "cleanup-day", ""]
+            },
+            "description": "Cron-triggered at 7:30 PM IST. Wipes StudentSubmission rows and student accounts for the date. NOTE: Currently also deletes DailyScore — this is a known bug."
+          }
         },
-        "description": "Zero-auth, zero-DB keep-alive endpoint. Used by cron-job.org every 10 min."
-      }
-    },
-    {
-      "name": "Warm Cache (Internal)",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "X-Cron-Secret", "value": "{{cron_secret}}" },
-          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
-        ],
-        "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            { "key": "date", "value": "{{exam_date}}" }
-          ]
+        {
+          "name": "Flush Weekly Leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/internal/flush-weekly-leaderboard/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "flush-weekly-leaderboard", ""]
+            },
+            "description": "Cron-triggered Sunday 7:45 PM IST. Deletes all WeeklyLeaderboard rows before recompute."
+          }
         },
-        "url": {
-          "raw": "{{base_url}}/api/internal/warm-cache/",
-          "host": ["{{base_url}}"],
-          "path": ["api", "internal", "warm-cache", ""]
-        },
-        "description": "Cron-triggered at 9:45 AM. Protected by X-Cron-Secret header."
-      }
+        {
+          "name": "Compute Weekly Leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/internal/compute-weekly-leaderboard/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "compute-weekly-leaderboard", ""]
+            },
+            "description": "Cron-triggered Sunday 8:00 PM IST. Computes SUM(score) from DailyScore for current week. Writes to WeeklyLeaderboard with tie-breaking ranks."
+          }
+        }
+      ]
     }
   ],
   "variable": [
-    { "key": "base_url", "value": "http://127.0.0.1:8000", "description": "Local dev. Change to Render URL for production." },
-    { "key": "access_token", "value": "", "description": "Paste access token from Login response." },
-    { "key": "exam_date", "value": "2026-06-21", "description": "Today's exam date in YYYY-MM-DD format." },
-    { "key": "cron_secret", "value": "your-cron-secret", "description": "CRON_SECRET_KEY from .env" }
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "description": "Local dev. Change to https://apptist-backend.onrender.com for production." },
+    { "key": "access_token", "value": "", "description": "Paste access token from Login/Register/SignIn response." },
+    { "key": "refresh_token", "value": "", "description": "Paste refresh token from Login/Register/SignIn response." },
+    { "key": "exam_date", "value": "2026-07-19", "description": "Today's exam date in YYYY-MM-DD format." },
+    { "key": "cron_secret", "value": "your-cron-secret", "description": "CRON_SECRET_KEY from .env — NEVER expose in frontend code." }
   ]
 }
