@@ -9,10 +9,12 @@ from pipeline.views import (
     process_scheduled_deletions,
     flush_weekly_leaderboard_view,
     compute_weekly_leaderboard_view,
+    cleanup_day_view,
     DashboardStatsView,
     AdminRankingsView,
     AdminReportsView,
     StudentLeaderboardView,
+    StudentDashboardView,
 )
 from exams.views import (
     get_answer_key,
@@ -45,6 +47,7 @@ urlpatterns = [
     path('api/internal/process-deletions/', process_scheduled_deletions, name='process-deletions'),
     path('api/internal/flush-weekly-leaderboard/', flush_weekly_leaderboard_view, name='flush-leaderboard'),
     path('api/internal/compute-weekly-leaderboard/', compute_weekly_leaderboard_view, name='compute-leaderboard'),
+    path('api/internal/cleanup-day/', cleanup_day_view, name='cleanup-day'),
     path('api/admin/dashboard-stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('api/admin/upload-questions/', UploadQuestionsView.as_view(), name='upload-questions'),
     path('api/admin/questions/', AdminQuestionListView.as_view(), name='admin-question-list'),
@@ -53,4 +56,5 @@ urlpatterns = [
     path('api/admin/reports/', AdminReportsView.as_view(), name='admin-reports'),
     path('api/student/leaderboard/', StudentLeaderboardView.as_view(), name='student-leaderboard'),
     path('api/student/review/', StudentReviewView.as_view(), name='student-review'),
+    path('api/student/dashboard/', StudentDashboardView.as_view(), name='student-dashboard'),
 ]

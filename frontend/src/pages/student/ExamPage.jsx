@@ -88,6 +88,7 @@ export default function ExamPage() {
           await examAPI.submitAnswers(examDate, answers);
           setSubmitted(true);
           clearAnswers();
+          navigate('/student/result', { replace: true });
         } catch (err) {
           const status = err.response?.status;
           const isRetryable = !status || status === 503 || status === 500;
@@ -106,12 +107,13 @@ export default function ExamPage() {
       await attempt(isAutoSubmit ? 3 : 0);
       setSubmitting(false);
     },
-    [examDate, answers, submitted, clearAnswers]
+    [examDate, answers, submitted, clearAnswers, navigate]
   );
 
   const handleAutoSubmit = useCallback(() => {
+    if (questions.length === 0) return;
     handleSubmit(true);
-  }, [handleSubmit]);
+  }, [handleSubmit, questions.length]);
 
   const timerDisplay = useExamCountdown(examEnd, handleAutoSubmit);
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);

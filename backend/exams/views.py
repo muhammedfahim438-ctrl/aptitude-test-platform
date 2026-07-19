@@ -76,7 +76,8 @@ class GetExamQuestionsView(APIView):
             logger.info(f"[CACHE HIT] questions for {exam_date}")
             return Response({'date': exam_date, 'questions': cached, 'source': 'cache'})
 
-        if is_exam_window:
+        from exams.cache import redis_client
+        if is_exam_window and redis_client is not None:
             logger.error(f"[CACHE MISS DURING EXAM WINDOW] date={exam_date}")
             return Response(
                 {'error': 'Questions are temporarily unavailable. Please retry shortly.', 'retry_after_seconds': 5},
@@ -84,14 +85,16 @@ class GetExamQuestionsView(APIView):
             )
 
         logger.warning(f"[CACHE MISS] questions for {exam_date} - falling back to DB")
-        count = warm_question_cache(exam_date)
-        if count == 0:
+        questions = list(Question.objects.filter(exam_date=exam_date).values(
+            'id', 'text', 'option_a', 'option_b', 'option_c', 'option_d', 'image_url'
+        ))
+        if not questions:
             return Response(
                 {'error': f'No questions found for exam_date={exam_date}.'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        questions = get_questions_cached(exam_date)
+        warm_question_cache(exam_date)
         return Response({'date': exam_date, 'questions': questions, 'source': 'db_fallback'})
 
 
@@ -123,7 +126,7 @@ class SubmitAnswersView(APIView):
         exam_date_str = request.data.get('exam_date')
         answers = request.data.get('answers')
 
-        if not exam_date_str or not answers:
+        if not exam_date_str or answers is None:
             return Response(
                 {'error': 'exam_date and answers are required.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -205,6 +208,12 @@ class UploadQuestionsView(APIView):
         if not isinstance(questions_payload, list) or len(questions_payload) == 0:
             return Response(
                 {'error': 'questions must be a non-empty list.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(questions_payload) != 10:
+            return Response(
+                {'error': f'Exactly 10 questions are required. Got {len(questions_payload)}.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

@@ -79,7 +79,7 @@ export default function LeaderboardPage() {
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#465aa3', cursor: 'pointer' }}
-          onClick={() => navigate('/student/exam')}>
+          onClick={() => navigate('/student/dashboard')}>
           arrow_back
         </span>
         <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: '#1c1c1b' }}>

@@ -7,4 +7,4 @@ dj-database-url>=2.1
 psycopg2-binary>=2.9
 gunicorn>=22.0
 redis>=5.0
-locust>=2.31
+whitenoise>=6.7

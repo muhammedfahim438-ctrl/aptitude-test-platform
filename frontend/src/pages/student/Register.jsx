@@ -90,7 +90,7 @@ export default function Register() {
       localStorage.setItem('refresh_token', res.data.refresh)
       localStorage.setItem('user', JSON.stringify(res.data.user))
       setSuccess(true)
-      setTimeout(() => navigate('/student/exam', { replace: true }), 1500)
+      setTimeout(() => navigate('/student/dashboard', { replace: true }), 1500)
     } catch (err) {
       setError(err.response?.data?.detail || 'Registration failed. Please try again.')
     } finally {

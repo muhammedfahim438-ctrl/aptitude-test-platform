@@ -40,7 +40,7 @@ class StaleCsvPurgeSignalTests(TestCase):
             option_a="A", option_b="B", option_c="C", option_d="D",
         )
 
-    def test_new_exam_date_purges_stale_csvs(self):
+    def test_new_exam_date_purges_stale_csvs_and_scoped_leaderboard(self):
         stale_path = self._make_csv('Master_Report_2026-06-19.csv')
         DailyLeaderboard.objects.create(
             student=self.student, exam_date=date(2026, 6, 19), score=3, rank=1
@@ -49,7 +49,20 @@ class StaleCsvPurgeSignalTests(TestCase):
         self._make_question(date(2026, 6, 21))
 
         self.assertFalse(os.path.exists(stale_path))
-        self.assertEqual(DailyLeaderboard.objects.count(), 0)
+        self.assertEqual(DailyLeaderboard.objects.count(), 1)
+
+    def test_leaderboard_flushed_for_same_date(self):
+        DailyLeaderboard.objects.create(
+            student=self.student, exam_date=date(2026, 6, 21), score=5, rank=1
+        )
+        DailyLeaderboard.objects.create(
+            student=self.student, exam_date=date(2026, 6, 19), score=3, rank=1
+        )
+
+        self._make_question(date(2026, 6, 21))
+
+        self.assertEqual(DailyLeaderboard.objects.count(), 1)
+        self.assertEqual(DailyLeaderboard.objects.first().exam_date, date(2026, 6, 19))
 
     def test_second_question_same_date_does_not_retrigger(self):
         self._make_question(date(2026, 6, 21), text="First")

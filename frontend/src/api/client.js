@@ -9,9 +9,13 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`
+    const url = config.url || ''
+    const isAuthEndpoint = url.includes('/api/auth/login/') || url.includes('/api/auth/student-signin/') || url.includes('/api/auth/register/') || url.includes('/api/auth/refresh/')
+    if (!isAuthEndpoint) {
+      const token = localStorage.getItem('access_token')
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`
+      }
     }
     return config
   },
@@ -82,6 +86,11 @@ export const examAPI = {
 
   getReview: (date) =>
     axiosClient.get(`/api/student/review/?date=${date}`),
+}
+
+export const studentAPI = {
+  getDashboard: () =>
+    axiosClient.get('/api/student/dashboard/'),
 }
 
 export const adminAPI = {

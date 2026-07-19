@@ -172,7 +172,7 @@ export default function LoginPage() {
       localStorage.setItem('access_token', res.data.access)
       localStorage.setItem('refresh_token', res.data.refresh)
       localStorage.setItem('user', JSON.stringify(res.data.user))
-      navigate('/student/exam', { replace: true })
+      navigate('/student/dashboard', { replace: true })
     } catch (err) {
       setError(err.response?.data?.detail || 'Sign in failed. Please try again.')
     } finally {

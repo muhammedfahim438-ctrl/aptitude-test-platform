@@ -222,7 +222,7 @@ export default function AnswerReview() {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, fontFamily: 'Inter' }}>
         <header style={{ background: C.surface, padding: '12px 16px', borderBottom: `1px solid ${C.outline}`, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span className="material-symbols-outlined" style={{ fontSize: 24, color: C.primary, cursor: 'pointer' }}
-            onClick={() => navigate('/student/exam')}>
+            onClick={() => navigate('/student/dashboard')}>
             arrow_back
           </span>
           <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.onSurface }}>Answer Review</h1>
@@ -245,7 +245,7 @@ export default function AnswerReview() {
     <div style={{ minHeight: '100vh', background: C.background, fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
       <header style={{ background: C.surface, padding: '12px 16px', borderBottom: `1px solid ${C.outline}`, display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 30 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 24, color: C.primary, cursor: 'pointer' }}
-          onClick={() => navigate('/student/exam')}>
+          onClick={() => navigate('/student/dashboard')}>
           arrow_back
         </span>
         <div>

@@ -1,0 +1,4 @@
+-r requirements.txt
+locust>=2.31
+pytest>=8.0
+pytest-django>=4.8

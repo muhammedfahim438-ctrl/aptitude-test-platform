@@ -33,5 +33,5 @@ def purge_stale_csv_on_question_upload(sender, instance, **kwargs):
         except FileNotFoundError:
             pass
 
-    deleted_count, _ = DailyLeaderboard.objects.all().delete()
-    logger.warning(f"[INTERCEPT] DailyLeaderboard flushed: {deleted_count} records removed.")
+    deleted_count, _ = DailyLeaderboard.objects.filter(exam_date=instance.exam_date).delete()
+    logger.warning(f"[INTERCEPT] DailyLeaderboard flushed for {instance.exam_date}: {deleted_count} records removed.")
