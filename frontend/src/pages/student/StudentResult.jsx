@@ -3,17 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import StudentBottomNav from '../../components/StudentBottomNav'
 import { examAPI, studentAPI } from '../../api/client'
 
-const C = {
-  primary: '#465aa3', bg: '#f9f9f7', card: '#ffffff',
-  text: '#1a1a2e', textMuted: '#6b7280', success: '#10b981', warning: '#f59e0b',
-  danger: '#ef4444', border: '#e5e7eb',
-  successBg: '#E5FAF1', warningBg: '#FFF8EE', errorBg: '#FCEAEC',
-}
-
-const Icon = ({ name, size = 24, color, style = {} }) => (
-  <span className="material-symbols-outlined" style={{ fontSize: size, color, lineHeight: 1, ...style }}>{name}</span>
-)
-
 function ReviewQuestion({ q, userAnswer, correctAnswer, index }) {
   const options = [
     { label: 'A', text: q.option_a },
@@ -26,35 +15,29 @@ function ReviewQuestion({ q, userAnswer, correctAnswer, index }) {
   const isSkipped = !userAnswer
 
   return (
-    <div style={{ background: C.card, borderRadius: 12, padding: 16, border: `1px solid ${C.border}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{
-          fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 600,
-          color: isSkipped ? C.textMuted : isCorrect ? '#059669' : C.danger,
-          background: isSkipped ? '#f3f4f6' : isCorrect ? C.successBg : C.errorBg,
-          padding: '2px 8px', borderRadius: 6,
-        }}>
+    <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline">
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`font-label-sm text-label-sm px-2.5 py-1 rounded-full font-semibold ${isSkipped ? 'bg-surface-container-high text-on-surface-variant' : isCorrect ? 'bg-tertiary-container text-tertiary' : 'bg-error-container text-error'}`}>
           Q{index + 1} {isSkipped ? 'Skipped' : isCorrect ? 'Correct' : 'Wrong'}
         </span>
       </div>
-      <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.text, margin: '0 0 10px', lineHeight: 1.5 }}>{q.text}</p>
+      <p className="font-body-md text-body-md text-on-surface mb-3 leading-relaxed">{q.text}</p>
       {q.image_url && (
-        <img src={q.image_url} alt="" style={{ width: '100%', borderRadius: 8, marginBottom: 10, maxHeight: 200, objectFit: 'contain' }} />
+        <img src={q.image_url} alt="" className="w-full rounded-xl mb-3 max-h-48 object-contain" />
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="flex flex-col gap-2">
         {options.map(opt => {
           const isUserChoice = userAnswer === opt.label
           const isCorrectOpt = opt.label === correctAnswer
-          let borderColor = C.border
-          let bg = 'transparent'
-          if (isCorrectOpt) { borderColor = '#059669'; bg = C.successBg }
-          if (isUserChoice && !isCorrect) { borderColor = C.danger; bg = C.errorBg }
+          let cls = 'border-outline bg-transparent text-on-surface'
+          if (isCorrectOpt) cls = 'border-tertiary bg-tertiary-container/30 text-on-surface'
+          if (isUserChoice && !isCorrect) cls = 'border-error bg-error-container/30 text-on-error-container'
           return (
-            <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: `1.5px solid ${borderColor}`, borderRadius: 8, background: bg }}>
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 600, color: C.text, width: 20 }}>{opt.label}</span>
-              <span style={{ fontFamily: 'Inter', fontSize: 13, color: C.text, flex: 1 }}>{opt.text}</span>
-              {isCorrectOpt && <Icon name="check_circle" size={16} color="#059669" />}
-              {isUserChoice && !isCorrect && <Icon name="cancel" size={16} color={C.danger} />}
+            <div key={opt.label} className={`flex items-center gap-3 px-3 py-2.5 border-2 rounded-xl transition-all ${cls}`}>
+              <span className="font-label-md text-label-md font-semibold w-5">{opt.label}</span>
+              <span className="font-body-md text-body-md flex-1">{opt.text}</span>
+              {isCorrectOpt && <span className="material-symbols-outlined text-tertiary" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+              {isUserChoice && !isCorrect && <span className="material-symbols-outlined text-error" style={{ fontSize: 18 }}>cancel</span>}
             </div>
           )
         })}
@@ -78,30 +61,17 @@ export default function StudentResult() {
         const dashRes = await studentAPI.getDashboard()
         if (cancelled) return
         const todayStatus = dashRes.data.today_status
-
-        if (todayStatus === 'before_window' || todayStatus === 'in_progress') {
-          setStatus('before_window')
-          return
-        }
-        if (todayStatus === 'missed') {
-          setStatus('missed')
-          return
-        }
-
+        if (todayStatus === 'before_window' || todayStatus === 'in_progress') { setStatus('before_window'); return }
+        if (todayStatus === 'missed') { setStatus('missed'); return }
         const [reviewRes, questionsRes] = await Promise.all([
           examAPI.getReview(today),
           examAPI.getQuestions(today).catch(() => ({ data: { questions: [] } })),
         ])
-
         if (cancelled) return
         setReview(reviewRes.data)
         setQuestions(questionsRes.data.questions || [])
-
-        if (reviewRes.data.window_status === 'open' && reviewRes.data.correct_answers) {
-          setStatus('reviewed')
-        } else {
-          setStatus('submitted')
-        }
+        if (reviewRes.data.window_status === 'open' && reviewRes.data.correct_answers) setStatus('reviewed')
+        else setStatus('submitted')
       } catch {
         if (!cancelled) setStatus('submitted')
       }
@@ -112,72 +82,76 @@ export default function StudentResult() {
 
   if (status === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ textAlign: 'center', color: C.textMuted }}>
-          <Icon name="hourglass_top" size={36} color={C.primary} />
-          <p style={{ marginTop: 8, fontSize: 14 }}>Loading results...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center text-on-surface-variant">
+          <span className="material-symbols-outlined text-primary animate-spin" style={{ fontSize: 36 }}>sync</span>
+          <p className="mt-2 text-body-sm">Loading results...</p>
         </div>
       </div>
     )
   }
 
-  if (status === 'before_window' || status === 'submitted') {
+  if (status === 'submitted' || status === 'before_window') {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Inter, sans-serif', maxWidth: 480, margin: '0 auto' }}>
-        <header style={{ background: C.card, padding: '16px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate('/student/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-              <Icon name="arrow_back" size={22} color={C.text} />
-            </button>
-            <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>Exam Result</h1>
-          </div>
-        </header>
-        <main style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, paddingBottom: 120 }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: C.successBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="check_circle" size={40} color="#059669" />
-          </div>
-          <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: C.text, textAlign: 'center', margin: 0 }}>Exam Submitted!</h2>
-          <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.textMuted, textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>
-            Your answers have been recorded. Results will be available after <strong>2:00 PM IST</strong>.
-          </p>
-          <button
-            onClick={() => navigate('/student/dashboard')}
-            style={{
-              marginTop: 8, background: C.primary, color: '#fff', border: 'none',
-              borderRadius: 999, padding: '13px 32px', fontFamily: 'Space Grotesk',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Back to Dashboard
+      <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+        <main className="w-full max-w-md flex flex-col items-center gap-8 pb-8">
+          <section className="flex flex-col items-center text-center gap-3 mt-8" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="w-24 h-24 bg-tertiary-container rounded-full flex items-center justify-center mb-2 shadow-md shadow-primary/10">
+              <span className="material-symbols-outlined text-tertiary" style={{ fontSize: 48, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            </div>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">Test Submitted!</h1>
+            <p className="font-body-md text-body-md text-on-surface-variant max-w-[280px]">Your responses have been successfully recorded.</p>
+          </section>
+
+          <section className="w-full bg-surface-container rounded-xl p-6 shadow-sm flex flex-col gap-4">
+            <h2 className="font-headline-md text-headline-md text-tertiary border-b border-outline pb-3">Submission Overview</h2>
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between items-center py-1">
+                <span className="font-body-md text-body-md text-on-surface-variant">Status</span>
+                <span className="font-label-md text-label-md text-on-surface">Submitted</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="font-body-md text-body-md text-on-surface-variant">Date</span>
+                <span className="font-label-md text-label-md text-on-surface">{today}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="font-body-md text-body-md text-on-surface-variant">Result Available</span>
+                <span className="font-label-md text-label-md text-on-surface">After 2:00 PM IST</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="w-full bg-secondary-container rounded-lg p-4 flex gap-3 items-start shadow-sm">
+            <span className="material-symbols-outlined text-secondary mt-0.5">info</span>
+            <div className="flex flex-col gap-1">
+              <h3 className="font-label-md text-label-md text-on-secondary-container font-bold">Scores Gated Until Deadline</h3>
+              <p className="font-body-sm text-body-sm text-on-secondary-container/80">Your score and answer key will be unlocked only after the official exam deadline passes for all students.</p>
+            </div>
+          </section>
+
+          <button onClick={() => navigate('/student/dashboard')}
+            className="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full shadow-md shadow-primary/20 hover:bg-primary/90 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined">home</span>
+            Return to Portal
           </button>
         </main>
-        <StudentBottomNav />
       </div>
     )
   }
 
   if (status === 'missed') {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Inter, sans-serif', maxWidth: 480, margin: '0 auto' }}>
-        <header style={{ background: C.card, padding: '16px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate('/student/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-              <Icon name="arrow_back" size={22} color={C.text} />
-            </button>
-            <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>Exam Result</h1>
+      <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+        <main className="w-full max-w-md flex flex-col items-center gap-6 pb-8">
+          <div className="w-24 h-24 bg-error-container rounded-full flex items-center justify-center">
+            <span className="material-symbols-outlined text-error" style={{ fontSize: 48 }}>event_busy</span>
           </div>
-        </header>
-        <main style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, paddingBottom: 120 }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: C.errorBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="event_busy" size={40} color={C.danger} />
-          </div>
-          <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: C.text, textAlign: 'center', margin: 0 }}>No Exam Today</h2>
-          <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.textMuted, textAlign: 'center' }}>You didn't take today's exam.</p>
-          <button onClick={() => navigate('/student/dashboard')} style={{ marginTop: 8, background: C.primary, color: '#fff', border: 'none', borderRadius: 999, padding: '13px 32px', fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          <h2 className="font-headline-md text-headline-md text-on-surface">No Exam Today</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant text-center">You didn't take today's exam.</p>
+          <button onClick={() => navigate('/student/dashboard')} className="bg-primary text-on-primary font-label-md text-label-md py-3 px-8 rounded-full shadow-md hover:opacity-90 active:scale-95 transition-all">
             Back to Dashboard
           </button>
         </main>
-        <StudentBottomNav />
       </div>
     )
   }
@@ -191,90 +165,70 @@ export default function StudentResult() {
     const skipped = Object.keys(correctAnswers).length - Object.keys(userAnswers).length
     const wrong = total - correct - Math.max(skipped, 0)
     const pct = Math.round((score / total) * 100)
-    const scoreColor = pct >= 70 ? '#059669' : pct >= 50 ? C.warning : C.danger
-
+    const scoreColor = pct >= 70 ? 'text-tertiary' : pct >= 50 ? 'text-secondary' : 'text-error'
+    const borderColor = pct >= 70 ? 'border-tertiary' : pct >= 50 ? 'border-secondary' : 'border-error'
     const questionMap = {}
     questions.forEach(q => { questionMap[q.id] = q })
 
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Inter, sans-serif', maxWidth: 480, margin: '0 auto' }}>
-        <header style={{ background: C.card, padding: '16px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate('/student/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-              <Icon name="arrow_back" size={22} color={C.text} />
+      <div className="min-h-screen bg-background pb-24">
+        <header className="bg-surface-container-lowest sticky top-0 z-30 border-b border-outline">
+          <div className="flex items-center gap-3 px-4 h-14">
+            <button onClick={() => navigate('/student/dashboard')} className="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+              <span className="material-symbols-outlined text-on-surface">arrow_back</span>
             </button>
-            <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>Your Result</h1>
+            <h1 className="font-headline-md text-headline-md text-on-surface">Your Result</h1>
           </div>
         </header>
 
-        <main style={{ padding: '16px', paddingBottom: 120, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ background: C.card, borderRadius: 16, padding: 24, border: `1px solid ${C.border}`, textAlign: 'center' }}>
-            <div style={{
-              width: 96, height: 96, borderRadius: '50%', border: `4px solid ${scoreColor}`,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 12px',
-            }}>
-              <span style={{ fontFamily: 'Space Grotesk', fontSize: 28, fontWeight: 700, color: scoreColor }}>{score}</span>
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.textMuted }}>/{total}</span>
+        <main className="px-4 py-4 max-w-lg mx-auto flex flex-col gap-4">
+          <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline text-center">
+            <div className={`w-24 h-24 rounded-full border-4 ${borderColor} flex flex-col items-center justify-center mx-auto mb-3`}>
+              <span className={`font-headline-lg text-headline-lg font-bold ${scoreColor}`}>{score}</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">/{total}</span>
             </div>
-            <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.textMuted, margin: 0 }}>Your Score</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant m-0">Your Score</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <div style={{ background: C.successBg, borderRadius: 10, padding: 12, textAlign: 'center' }}>
-              <p style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: '#059669', margin: 0 }}>{correct}</p>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: '#059669', margin: '2px 0 0', textTransform: 'uppercase' }}>Correct</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-tertiary-container rounded-xl p-3 text-center">
+              <p className="font-headline-md text-headline-md text-tertiary m-0">{correct}</p>
+              <p className="font-label-sm text-label-sm text-tertiary m-0 mt-0.5 uppercase">Correct</p>
             </div>
-            <div style={{ background: C.errorBg, borderRadius: 10, padding: 12, textAlign: 'center' }}>
-              <p style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: C.danger, margin: 0 }}>{Math.max(wrong, 0)}</p>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: C.danger, margin: '2px 0 0', textTransform: 'uppercase' }}>Wrong</p>
+            <div className="bg-error-container rounded-xl p-3 text-center">
+              <p className="font-headline-md text-headline-md text-error m-0">{Math.max(wrong, 0)}</p>
+              <p className="font-label-sm text-label-sm text-error m-0 mt-0.5 uppercase">Wrong</p>
             </div>
-            <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-              <p style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: C.textMuted, margin: 0 }}>{Math.max(skipped, 0)}</p>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: C.textMuted, margin: '2px 0 0', textTransform: 'uppercase' }}>Skipped</p>
+            <div className="bg-surface-container-high rounded-xl p-3 text-center">
+              <p className="font-headline-md text-headline-md text-on-surface-variant m-0">{Math.max(skipped, 0)}</p>
+              <p className="font-label-sm text-label-sm text-on-surface-variant m-0 mt-0.5 uppercase">Skipped</p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex flex-col gap-4">
             {Object.keys(correctAnswers).map((qid, idx) => {
               const num = parseInt(qid.replace('q', ''), 10)
               const q = questionMap[num]
               if (!q) return null
-              return (
-                <ReviewQuestion
-                  key={qid}
-                  q={q}
-                  userAnswer={userAnswers[qid] || null}
-                  correctAnswer={correctAnswers[qid]}
-                  index={idx}
-                />
-              )
+              return <ReviewQuestion key={qid} q={q} userAnswer={userAnswers[qid] || null} correctAnswer={correctAnswers[qid]} index={idx} />
             })}
           </div>
         </main>
+
         <StudentBottomNav />
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Inter, sans-serif', maxWidth: 480, margin: '0 auto' }}>
-      <header style={{ background: C.card, padding: '16px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => navigate('/student/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <Icon name="arrow_back" size={22} color={C.text} />
-          </button>
-          <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>Exam Result</h1>
-        </div>
-      </header>
-      <main style={{ padding: 40, textAlign: 'center', paddingBottom: 120 }}>
-        <Icon name="info" size={36} color={C.warning} />
-        <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.textMuted, marginTop: 8 }}>Results will appear after 2:00 PM IST.</p>
-        <button onClick={() => navigate('/student/dashboard')} style={{ marginTop: 16, background: C.primary, color: '#fff', border: 'none', borderRadius: 999, padding: '13px 32px', fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+      <div className="text-center">
+        <span className="material-symbols-outlined text-secondary" style={{ fontSize: 36 }}>info</span>
+        <p className="font-body-md text-body-md text-on-surface-variant mt-2">Results will appear after 2:00 PM IST.</p>
+        <button onClick={() => navigate('/student/dashboard')} className="mt-4 bg-primary text-on-primary font-label-md text-label-md py-3 px-8 rounded-full shadow-md hover:opacity-90 active:scale-95 transition-all">
           Back to Dashboard
         </button>
-      </main>
-      <StudentBottomNav />
+      </div>
     </div>
   )
 }

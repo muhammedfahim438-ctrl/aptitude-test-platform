@@ -140,6 +140,7 @@ def register_view(request):
             password=password,
             full_name=full_name,
             roll_number=roll_number,
+            department=department,
             is_student=True,
             is_active=True,
         )
@@ -159,7 +160,7 @@ def register_view(request):
                     "roll_number": user.roll_number,
                     "is_student": user.is_student,
                     "is_teacher": user.is_teacher,
-                    "department": department,
+                    "department": user.department,
                     "mobile": mobile,
                 }
             },
@@ -199,6 +200,8 @@ def student_signin_view(request):
         user = User.objects.get(roll_number=roll_number)
         user.full_name = full_name
         user.email = email
+        if department:
+            user.department = department
         user.save()
         logger.info(f"[SIGNIN] Existing student signed in: {email}")
 
@@ -206,6 +209,8 @@ def student_signin_view(request):
         user = User.objects.get(email=email)
         user.full_name = full_name
         user.roll_number = roll_number
+        if department:
+            user.department = department
         user.save()
         logger.info(f"[SIGNIN] Existing student signed in by email: {email}")
 
@@ -214,6 +219,7 @@ def student_signin_view(request):
             email=email,
             full_name=full_name,
             roll_number=roll_number,
+            department=department,
             is_student=True,
             is_active=True,
         )

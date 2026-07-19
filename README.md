@@ -171,10 +171,8 @@ aptitude-test-platform/
 │   │       └── production.py                   # Prod: PostgreSQL, 15min JWT, HSTS, SSL
 │   │
 │   ├── accounts/
-│   │   ├── models.py                           # CustomUser (email as USERNAME_FIELD)
-│   │   ├── managers.py                         # CustomUserManager
+│   │   ├── models.py                           # CustomUser (email as USERNAME_FIELD, department field)
 │   │   ├── views.py                            # login_view, register_view, student_signin_view
-│   │   ├── serializers.py                      # Empty (views handle serialization inline)
 │   │   └── tests.py                            # 21 tests (AnswerKeyTimeGate, Login, SecurityAudit)
 │   │
 │   ├── exams/
@@ -187,7 +185,7 @@ aptitude-test-platform/
 │   │
 │   ├── pipeline/
 │   │   ├── models.py                           # DailyScore, DailyLeaderboard, WeeklyLeaderboard,
-│   │   │                                       # ScheduledFileDeletion, ReportDownloadLog
+│   │   │                                       # MonthlyLeaderboard, ScheduledFileDeletion, ReportDownloadLog
 │   │   ├── views.py                            # Dashboard, Rankings, Reports, Cleanup endpoints
 │   │   ├── aggregation.py                      # aggregate_and_export (CSV + DailyScore)
 │   │   ├── signals.py                          # Stale CSV purge + DailyLeaderboard scoped flush
@@ -201,9 +199,11 @@ aptitude-test-platform/
 │   │   └── management/commands/
 │   │       ├── aggregate_scores.py             # Grade submissions → DailyScore + CSV
 │   │       ├── compute_weekly_leaderboard.py   # SUM(score) → WeeklyLeaderboard
+│   │       ├── compute_monthly_leaderboard.py  # SUM(score) → MonthlyLeaderboard
 │   │       ├── flush_weekly_leaderboard.py     # Delete all WeeklyLeaderboard rows
+│   │       ├── flush_monthly_leaderboard.py    # Delete all MonthlyLeaderboard rows
 │   │       ├── process_deletions.py            # Delete overdue CSV files
-│   │       └── cleanup_day.py                  # Wipe submissions + student accounts
+│   │       └── cleanup_day.py                  # Wipe submissions + leaderboard (preserves scores)
 │   │
 │   └── tests/
 │       └── locustfile.py                       # Load test (2000 concurrent users)
@@ -289,10 +289,10 @@ aptitude-test-platform/
 - [x] `requirements-dev.txt` created (locust, pytest, pytest-django)
 - [x] HSTS headers added to production settings
 - [x] `.gitignore` expanded (Python, IDE, OS, Django, React, testing)
-- [ ] **FIX:** `cleanup_day` must NOT delete `DailyScore` rows (currently does)
-- [ ] Add `department` field to `CustomUser` model
-- [ ] Add `MonthlyLeaderboard` model + `compute_monthly_leaderboard` command
-- [ ] Add `/api/internal/aggregate-scores/` HTTP endpoint (command exists, endpoint missing)
+- [x] **FIX:** `cleanup_day` no longer deletes `DailyScore` rows (preserved for analytics)
+- [x] Add `department` field to `CustomUser` model
+- [x] Add `MonthlyLeaderboard` model + `compute_monthly_leaderboard` command
+- [x] Add `/api/internal/aggregate-scores/` HTTP endpoint (wraps management command)
 
 ### Phase 4 — Cron-Job.org Automation Schedule
 
@@ -308,13 +308,9 @@ aptitude-test-platform/
 
 ### Known Issues
 
-| # | Issue | Severity | Location |
+| # | Issue | Severity | Status |
 |---|---|---|---|
-| 1 | `cleanup_day` deletes DailyScore (should preserve) | CRITICAL | `pipeline/management/commands/cleanup_day.py` |
-| 2 | No `department` field on CustomUser (not stored in DB) | HIGH | `accounts/models.py` |
-| 3 | No MonthlyLeaderboard model | MEDIUM | `pipeline/models.py` |
-| 4 | `LeaderboardPage.jsx` uses mock data | HIGH | `frontend/src/pages/student/LeaderboardPage.jsx` |
-| 5 | Mixed icon systems (Remix vs Material Symbols) | LOW | Admin vs student pages |
+| — | *(all critical/high bugs fixed)* | — | ✅ Resolved |
 
 ---
 
@@ -359,9 +355,12 @@ aptitude-test-platform/
 |---|---|---|
 | POST | `/api/internal/warm-cache/` | Pre-load questions into Redis |
 | POST | `/api/internal/process-deletions/` | Delete overdue CSV files |
-| POST | `/api/internal/cleanup-day/` | Daily data wipe |
+| POST | `/api/internal/aggregate-scores/` | Grade submissions + generate CSV |
+| POST | `/api/internal/cleanup-day/` | Wipe submissions + leaderboard (preserves scores) |
 | POST | `/api/internal/flush-weekly-leaderboard/` | Flush weekly leaderboard |
 | POST | `/api/internal/compute-weekly-leaderboard/` | Recompute weekly leaderboard |
+| POST | `/api/internal/flush-monthly-leaderboard/` | Flush monthly leaderboard |
+| POST | `/api/internal/compute-monthly-leaderboard/` | Recompute monthly leaderboard |
 
 ---
 

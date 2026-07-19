@@ -15,42 +15,20 @@ export default function BottomNav({ active }) {
   const currentKey = active || NAV_ITEMS.find((n) => location.pathname.startsWith(n.path))?.key
 
   return (
-    <nav style={styles.bottomNav}>
+    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 pb-8 bg-admin-surface border-t border-admin-outline-variant shadow-lg">
       {NAV_ITEMS.map((item) => {
         const isActive = item.key === currentKey
         return (
           <button
             key={item.key}
-            style={isActive ? styles.navItemActive : styles.navItem}
+            className={`flex flex-col items-center justify-center transition-all duration-150 ${isActive ? 'bg-admin-primary text-admin-on-primary rounded-full px-4 py-1 scale-95 shadow-sm' : 'text-admin-on-surface-variant opacity-70 hover:opacity-100'}`}
             onClick={() => navigate(item.path)}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
-              {item.icon}
-            </span>
-            <span style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}>
-              {item.label}
-            </span>
+            <span className="material-symbols-outlined">{item.icon}</span>
+            <span className="text-label-sm font-label-sm mt-1">{item.label}</span>
           </button>
         )
       })}
     </nav>
   )
-}
-
-const styles = {
-  bottomNav: {
-    position: 'fixed', bottom: 0, left: 0, width: '100%', zIndex: 50,
-    background: '#fff', borderTop: '1px solid #dadada',
-    display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-    padding: '10px 8px 24px', boxShadow: '0 -4px 12px rgba(0,0,0,0.05)',
-  },
-  navItem: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-    background: 'none', border: 'none', color: '#49454f', opacity: 0.7, cursor: 'pointer',
-  },
-  navItemActive: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-    background: '#dbeafe', border: 'none', color: '#1e3a8a',
-    borderRadius: 999, padding: '4px 16px', cursor: 'pointer',
-  },
 }

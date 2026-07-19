@@ -35,68 +35,26 @@ const DEPARTMENT_GROUPS = [
 
 const OTHERS_VALUE = '__others__'
 
-const C = {
-  primary: '#465aa3', primaryContainer: '#EAEFFD', onPrimaryContainer: '#1e347b',
-  primaryLight: '#8CA0EE', secondary: '#8a5108', secondaryContainer: '#FFEEDC',
-  onSecondaryContainer: '#F2924B', tertiary: '#116b51', tertiaryContainer: '#E5FAF1',
-  onTertiaryContainer: '#1F8A5F', surface: '#FBFBFF', surfaceContainer: '#FFFFFF',
-  surfaceContainerLow: '#f5f3fa', outline: '#E6E9F7', outlineVariant: '#c5c5d2',
-  onSurface: '#1b1b20', onSurfaceVariant: '#444651', error: '#E2737A',
-  errorContainer: '#FCEAEC', onErrorContainer: '#93000a', background: '#faf8ff',
-}
-
-const Icon = ({ name, size = 24, fill = false, color, style = {} }) => (
-  <span className={`material-symbols-outlined${fill ? ' fill-icon' : ''}`}
-    style={{ fontSize: size, color, lineHeight: 1, ...style }}>{name}</span>
-)
-
-const InputField = ({ label, value, onChange, placeholder, type = 'text', showCheck = false, maxLength, inputMode }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-    <label style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: C.onSurfaceVariant, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</label>
-    <div style={{ background: C.surfaceContainer, borderRadius: 8, border: `1.5px solid ${C.outline}`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        inputMode={inputMode}
-        style={{ background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Inter', fontSize: 15, color: C.onSurface, width: '100%' }}
-      />
-      {showCheck && value && <Icon name="check_circle" fill size={18} color={C.tertiary} />}
-    </div>
-  </div>
-)
-
 const MissingFieldsModal = ({ missingLabels, onClose }) => (
-  <div onClick={onClose} style={{
-    position: 'fixed', inset: 0, background: 'rgba(27,27,32,0.45)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24,
-  }}>
-    <div onClick={e => e.stopPropagation()} style={{
-      background: C.surfaceContainer, borderRadius: 16, padding: 24,
-      maxWidth: 380, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
-      display: 'flex', flexDirection: 'column', gap: 14,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.errorContainer, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon name="error" color={C.error} size={22} />
+  <div onClick={onClose} className="fixed inset-0 bg-black/45 flex items-center justify-center z-[1000] p-6">
+    <div onClick={e => e.stopPropagation()} className="bg-surface-container rounded-2xl p-6 max-w-sm w-full shadow-xl flex flex-col gap-3.5">
+      <div className="flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-full bg-error-container flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-error" style={{ fontSize: 22 }}>error</span>
         </div>
-        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.onSurface }}>Missing Information</h2>
+        <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Missing Information</h2>
       </div>
-      <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.onSurfaceVariant, lineHeight: 1.5 }}>
+      <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
         Please fill in the following field{missingLabels.length > 1 ? 's' : ''} before signing in:
       </p>
-      <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <ul className="m-0 pl-5 flex flex-col gap-1">
         {missingLabels.map(label => (
-          <li key={label} style={{ fontFamily: 'Inter', fontSize: 14, color: C.onErrorContainer, fontWeight: 500 }}>{label}</li>
+          <li key={label} className="font-body-sm text-body-sm text-on-error-container font-medium">{label}</li>
         ))}
       </ul>
-      <button onClick={onClose} style={{
-        marginTop: 8, width: '100%', background: C.primary, color: '#fff',
-        border: 'none', borderRadius: 9999, padding: '12px', fontFamily: 'Space Grotesk',
-        fontSize: 14, fontWeight: 600, cursor: 'pointer',
-      }}>Got it</button>
+      <button onClick={onClose} className="mt-2 w-full bg-primary text-on-primary border-none rounded-full py-3 font-headline-md text-body-sm font-semibold cursor-pointer">
+        Got it
+      </button>
     </div>
   </div>
 )
@@ -180,109 +138,124 @@ export default function LoginPage() {
     }
   }
 
+  const Field = ({ label, value, onChange, placeholder, type = 'text', showCheck, maxLength, inputMode }) => (
+    <div className="flex flex-col gap-1">
+      <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{label}</label>
+      <div className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md flex items-center gap-2">
+        <input
+          type={type} value={value} onChange={e => onChange(e.target.value)}
+          placeholder={placeholder} maxLength={maxLength} inputMode={inputMode}
+          className="bg-transparent border-none outline-none font-body-md text-body-md text-on-surface w-full placeholder:text-on-surface-variant/50"
+        />
+        {showCheck && value && <span className="material-symbols-outlined text-tertiary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+      </div>
+    </div>
+  )
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <header style={{ background: C.surface, padding: '0 16px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(70,90,163,0.3)', overflow: 'hidden' }}>
-            <img src="/app-logo.png" alt="Apptist" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    <div className="min-h-screen flex flex-col font-body-md bg-background text-on-background">
+      <header className="bg-surface top-0 z-40 sticky">
+        <div className="flex justify-between items-center w-full px-4 h-16">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg shadow-sm overflow-hidden">
+              <img src="/app-logo.png" alt="Apptist" className="w-full h-full object-cover" />
+            </div>
+            <span className="font-headline-md text-headline-md font-bold text-primary">Apptist</span>
           </div>
-          <span style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 700, color: C.primary }}>Apptist</span>
+          <Link to="/admin/login" className="p-2 rounded-full hover:bg-primary-fixed transition-colors duration-200 flex items-center justify-center text-primary">
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>admin_panel_settings</span>
+          </Link>
         </div>
-        <Link to="/admin/login" style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.primary, textDecoration: 'none', border: `1px solid ${C.primary}`, borderRadius: 6, padding: '4px 10px' }}>
-          Admin Login
-        </Link>
       </header>
 
-      <main style={{ flex: 1, padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 120, height: 120, borderRadius: '50%', background: C.surfaceContainer, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(70,90,163,0.12)', border: '4px solid #fff', overflow: 'hidden' }}>
-            <img src="/college-logo.png" alt="NGI" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 32, fontWeight: 700, color: C.onSurface, marginBottom: 4 }}>Welcome</h1>
-            <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.onSurfaceVariant }}>Nehru Group of Institutions - Aptitude Portal</p>
-          </div>
-        </div>
+      <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary-container to-transparent -z-10 opacity-50" />
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary-fixed rounded-full blur-3xl opacity-30 -z-10" />
+        <div className="absolute bottom-0 left-10 w-48 h-48 bg-secondary-container rounded-full blur-3xl opacity-20 -z-10" />
 
-        <div style={{ width: '100%', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 8px 20px rgba(70,90,163,0.08)' }}>
-          <InputField label="Student Full Name" value={form.full_name} onChange={update('full_name')} placeholder="Enter your full name" showCheck />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <InputField label="Reg No." value={form.roll_number} onChange={update('roll_number')} placeholder="NGI2026CS045" showCheck />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: C.onSurfaceVariant, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Department</label>
-              <select value={form.department} onChange={e => update('department')(e.target.value)}
-                style={{ background: C.surfaceContainer, borderRadius: 8, border: `1.5px solid ${C.outline}`, padding: '10px 12px', fontFamily: 'Inter', fontSize: 14, color: C.onSurface, outline: 'none', width: '100%' }}>
-                <option value="">Select</option>
-                {DEPARTMENT_GROUPS.map(group => (
-                  <optgroup key={group.school} label={group.school}>
-                    {group.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </optgroup>
-                ))}
-                <option value={OTHERS_VALUE}>Others</option>
-              </select>
+        <div className="w-full max-w-md mx-auto space-y-6">
+          <div className="flex flex-col items-center text-center space-y-2 mb-4">
+            <div className="w-32 h-32 rounded-full bg-surface-container-lowest shadow-md flex items-center justify-center overflow-hidden border-4 border-white">
+              <img src="/college-logo.png" alt="NGI" className="w-full h-full object-cover object-center" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="font-headline-lg text-headline-lg text-on-surface">Welcome</h1>
+              <p className="font-body-sm text-body-sm text-on-surface-variant opacity-70">Nehru Group of Institutions · Aptitude Portal</p>
             </div>
           </div>
-          {form.department === OTHERS_VALUE && (
-            <InputField label="Please specify your course" value={form.custom_department} onChange={update('custom_department')} placeholder="Type your course/department" showCheck />
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: C.onSurfaceVariant, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Year</label>
-              <select value={form.year} onChange={e => update('year')(e.target.value)}
-                style={{ background: C.surfaceContainer, borderRadius: 8, border: `1.5px solid ${C.outline}`, padding: '10px 12px', fontFamily: 'Inter', fontSize: 14, color: C.onSurface, outline: 'none', width: '100%' }}>
-                <option value="">Select</option>
-                <option value="1st Year">1st Year</option>
-                <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year">3rd Year</option>
-              </select>
+
+          <div className="bg-surface-container-lowest rounded-lg shadow-md p-4 space-y-3 border-outline-variant border">
+            <Field label="Student Full Name" value={form.full_name} onChange={update('full_name')} placeholder="Enter your full name" showCheck />
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Reg No." value={form.roll_number} onChange={update('roll_number')} placeholder="NGI2026CS045" showCheck />
+              <div className="flex flex-col gap-1">
+                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Department</label>
+                <select value={form.department} onChange={e => update('department')(e.target.value)}
+                  className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm truncate outline-none">
+                  <option value="">Select</option>
+                  {DEPARTMENT_GROUPS.map(group => (
+                    <optgroup key={group.school} label={group.school}>
+                      {group.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </optgroup>
+                  ))}
+                  <option value={OTHERS_VALUE}>Others</option>
+                </select>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: C.onSurfaceVariant, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Semester</label>
-              <select value={form.semester} onChange={e => update('semester')(e.target.value)}
-                style={{ background: C.surfaceContainer, borderRadius: 8, border: `1.5px solid ${C.outline}`, padding: '10px 12px', fontFamily: 'Inter', fontSize: 14, color: C.onSurface, outline: 'none', width: '100%' }}>
-                <option value="">Select</option>
-                <option value="Semester 1">Sem 1</option>
-                <option value="Semester 2">Sem 2</option>
-                <option value="Semester 3">Sem 3</option>
-                <option value="Semester 4">Sem 4</option>
-                <option value="Semester 5">Sem 5</option>
-                <option value="Semester 6">Sem 6</option>
-              </select>
+            {form.department === OTHERS_VALUE && (
+              <Field label="Please specify your course" value={form.custom_department} onChange={update('custom_department')} placeholder="Type your course/department" showCheck />
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Year</label>
+                <select value={form.year} onChange={e => update('year')(e.target.value)}
+                  className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm truncate outline-none">
+                  <option value="">Select</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Semester</label>
+                <select value={form.semester} onChange={e => update('semester')(e.target.value)}
+                  className="bg-tertiary-fixed px-3 py-2 rounded-lg border border-tertiary/20 text-on-surface font-body-md text-sm truncate outline-none">
+                  <option value="">Select</option>
+                  <option value="Semester 1">Sem 1</option>
+                  <option value="Semester 2">Sem 2</option>
+                  <option value="Semester 3">Sem 3</option>
+                  <option value="Semester 4">Sem 4</option>
+                  <option value="Semester 5">Sem 5</option>
+                  <option value="Semester 6">Sem 6</option>
+                </select>
+              </div>
             </div>
+            <Field label="Email" value={form.email} onChange={update('email')} placeholder="your@ngi.edu.in" type="email" showCheck />
+            <Field label="Mobile Number" value={form.mobile} onChange={update('mobile')} placeholder="9876543210" type="tel" inputMode="numeric" maxLength={10} showCheck />
+            {error && (
+              <div className="bg-error-container rounded-lg px-3 py-2 flex items-center gap-2">
+                <span className="material-symbols-outlined text-error" style={{ fontSize: 16 }}>error</span>
+                <p className="font-body-sm text-body-sm text-on-error-container">{error}</p>
+              </div>
+            )}
           </div>
-          <InputField label="Email" value={form.email} onChange={update('email')} placeholder="your@ngi.edu.in" type="email" showCheck />
-          <InputField label="Mobile Number" value={form.mobile} onChange={update('mobile')} placeholder="9876543210" type="tel" inputMode="numeric" maxLength={10} showCheck />
-          {error && (
-            <div style={{ background: C.errorContainer, borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icon name="error" size={16} color={C.error} />
-              <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.onErrorContainer }}>{error}</p>
-            </div>
-          )}
-        </div>
 
-        <div style={{ width: '100%', background: '#fff8ee', border: '1px solid rgba(138,81,8,0.2)', borderRadius: 10, padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <Icon name="info" size={20} color={C.secondary} />
-          <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.onSurfaceVariant, lineHeight: 1.5 }}>Please verify your details before starting the assessment. Contact admin if any information is incorrect.</p>
-        </div>
+          <div className="bg-secondary-fixed border border-secondary/20 rounded-lg p-3 flex items-start gap-3">
+            <span className="material-symbols-outlined text-secondary mt-0.5">info</span>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">Please verify your details before starting the assessment. Contact admin if any information is incorrect.</p>
+          </div>
 
-        <button onClick={handleSignIn} disabled={loading} style={{
-          width: '100%', background: loading ? C.primaryLight : C.primary, color: '#fff',
-          border: 'none', borderRadius: 9999, padding: '16px', fontFamily: 'JetBrains Mono',
-          fontSize: 13, fontWeight: 500, letterSpacing: '0.05em', cursor: loading ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 4px 16px rgba(70,90,163,0.25)', transition: 'all 0.2s',
-        }}>
-          {loading && <Icon name="sync" size={18} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />}
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
+          <button onClick={handleSignIn} disabled={loading}
+            className={`w-full bg-primary text-on-primary font-label-md text-label-md py-4 px-6 rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}>
+            {loading && <span className="material-symbols-outlined animate-spin" style={{ fontSize: 18 }}>sync</span>}
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </div>
       </main>
 
       {missingLabels.length > 0 && (
         <MissingFieldsModal missingLabels={missingLabels} onClose={() => setMissingLabels([])} />
       )}
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

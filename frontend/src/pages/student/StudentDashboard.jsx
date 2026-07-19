@@ -4,17 +4,6 @@ import { jwtDecode } from 'jwt-decode'
 import StudentBottomNav from '../../components/StudentBottomNav'
 import { studentAPI } from '../../api/client'
 
-const C = {
-  primary: '#465aa3', primaryLight: '#8CA0EE', bg: '#f9f9f7', card: '#ffffff',
-  text: '#1a1a2e', textMuted: '#6b7280', success: '#10b981', warning: '#f59e0b',
-  danger: '#ef4444', border: '#e5e7eb', surfaceContainer: '#f5f3fa',
-  errorContainer: '#FCEAEC', primaryContainer: '#EAEFFD',
-}
-
-const Icon = ({ name, size = 24, color, style = {} }) => (
-  <span className="material-symbols-outlined" style={{ fontSize: size, color, lineHeight: 1, ...style }}>{name}</span>
-)
-
 function formatDate(d) {
   return d.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
@@ -66,143 +55,151 @@ export default function StudentDashboard() {
     const s = data.today_status
     const score = data.today?.score
     const total = data.today?.total_questions || 20
-
-    if (s === 'before_window') {
-      return {
-        icon: 'schedule', iconColor: C.primary, iconBg: C.primaryContainer,
-        title: 'Exam starts at 10:00 AM',
-        subtitle: 'Get ready! The aptitude test window opens soon.',
-        btnLabel: null,
-      }
-    }
-    if (s === 'in_progress') {
-      return {
-        icon: 'play_circle', iconColor: '#059669', iconBg: '#E5FAF1',
-        title: 'Exam in Progress',
-        subtitle: 'The exam window is open. Take the test now!',
-        btnLabel: 'Start Exam', btnAction: () => navigate('/student/exam'), btnColor: '#059669',
-      }
-    }
-    if (s === 'submitted') {
-      return {
-        icon: 'check_circle', iconColor: C.warning, iconBg: '#FFF8EE',
-        title: 'Exam Submitted',
-        subtitle: 'Awaiting results after 2:00 PM IST.',
-        btnLabel: null,
-      }
-    }
-    if (s === 'reviewed') {
-      return {
-        icon: 'emoji_events', iconColor: '#059669', iconBg: '#E5FAF1',
-        title: `Score: ${score}/${total}`,
-        subtitle: 'Your results are ready. Review your answers!',
-        btnLabel: 'View Result', btnAction: () => navigate('/student/review'), btnColor: C.primary,
-      }
-    }
-    if (s === 'missed') {
-      return {
-        icon: 'event_busy', iconColor: C.danger, iconBg: C.errorContainer,
-        title: 'Missed Today\'s Exam',
-        subtitle: 'The exam window has closed. Come back tomorrow!',
-        btnLabel: null,
-      }
-    }
+    if (s === 'before_window') return { icon: 'schedule', title: 'Exam starts at 10:00 AM', subtitle: 'Get ready! The aptitude test window opens soon.', btnLabel: null }
+    if (s === 'in_progress') return { icon: 'play_circle', title: 'Exam in Progress', subtitle: 'The exam window is open. Take the test now!', btnLabel: 'Start Exam', btnAction: () => navigate('/student/exam') }
+    if (s === 'submitted') return { icon: 'check_circle', title: 'Exam Submitted', subtitle: 'Awaiting results after 2:00 PM IST.', btnLabel: null }
+    if (s === 'reviewed') return { icon: 'emoji_events', title: `Score: ${score}/${total}`, subtitle: 'Your results are ready. Review your answers!', btnLabel: 'View Result', btnAction: () => navigate('/student/review') }
+    if (s === 'missed') return { icon: 'event_busy', title: "Missed Today's Exam", subtitle: 'The exam window has closed. Come back tomorrow!', btnLabel: null }
     return null
   }
 
   const card = examCardState()
   const name = user?.full_name || 'Student'
+  const rollNo = user?.roll_number || ''
+  const dept = user?.department || ''
+  const year = user?.year || ''
+  const semester = user?.semester || ''
+
+  const handleLogout = () => {
+    localStorage.clear()
+    navigate('/login', { replace: true })
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Inter, sans-serif', maxWidth: 480, margin: '0 auto' }}>
-      <header style={{ background: C.card, padding: '16px', borderBottom: `1px solid ${C.border}` }}>
-        <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.textMuted, marginBottom: 2 }}>Welcome back,</p>
-        <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>{name}</h1>
-        <p style={{ fontFamily: 'Inter', fontSize: 12, color: C.textMuted, marginTop: 4 }}>{formatDate(new Date())}</p>
+    <div className="min-h-screen bg-background font-body-md text-on-background">
+      <header className="fixed top-0 w-full bg-surface-container shadow-sm z-50 flex items-center justify-between px-4 py-3 border-b border-outline">
+        <h1 className="font-headline-md text-headline-md text-primary tracking-tight">Student Dashboard</h1>
+        <button className="p-2 rounded-full hover:bg-surface-variant transition-colors duration-200 text-on-surface-variant">
+          <span className="material-symbols-outlined">notifications</span>
+        </button>
       </header>
 
-      <main style={{ padding: '16px', paddingBottom: 120, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <main className="pt-20 pb-24 px-4 md:px-12 max-w-[1440px] mx-auto">
+        <section className="mb-6">
+          <div className="bg-surface-container rounded-xl p-4 shadow-sm flex flex-col items-center gap-6 border border-outline">
+            <div className="flex-1 text-center space-y-2">
+              <div className="flex flex-col items-center gap-3">
+                <h2 className="font-headline-lg text-headline-lg text-on-surface">Welcome Back, {name}</h2>
+                {dept && <span className="px-3 py-1 bg-tertiary-container text-on-tertiary-container font-label-lg text-label-sm rounded-full">{dept}</span>}
+              </div>
+              {rollNo && <p className="font-body-lg text-body-lg text-on-surface-variant">Reg No: <span className="text-on-surface font-medium">{rollNo}</span></p>}
+              <div className="pt-2 flex flex-wrap justify-center gap-3">
+                {year && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded-lg border border-outline">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 20 }}>school</span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">{year}</span>
+                  </div>
+                )}
+                {semester && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded-lg border border-outline">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 20 }}>event</span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">{semester}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {loading && (
-          <div style={{ textAlign: 'center', padding: 40, color: C.textMuted }}>
-            <Icon name="hourglass_top" size={32} color={C.primary} />
-            <p style={{ marginTop: 8, fontSize: 14 }}>Loading dashboard...</p>
+          <div className="text-center py-16 text-on-surface-variant">
+            <span className="material-symbols-outlined animate-spin text-primary" style={{ fontSize: 32 }}>sync</span>
+            <p className="mt-2 text-body-sm">Loading dashboard...</p>
           </div>
         )}
 
         {error && (
-          <div style={{ background: C.errorContainer, borderRadius: 12, padding: 16, color: '#93000a', fontSize: 14 }}>
-            {error}
-          </div>
+          <div className="bg-error-container rounded-xl p-4 text-on-error-container text-body-sm mb-4">{error}</div>
         )}
 
-        {!loading && card && (
-          <div style={{ background: C.card, borderRadius: 16, padding: 20, border: `1px solid ${C.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={card.icon} size={26} color={card.iconColor} />
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="group relative bg-surface-container rounded-xl p-4 shadow-sm border border-outline transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <div className="flex items-start justify-between mb-2">
+                <div className="p-3 bg-primary-container rounded-xl text-primary">
+                  <span className="material-symbols-outlined" style={{ fontSize: 32 }}>assignment</span>
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">north_east</span>
               </div>
-              <div>
-                <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>{card.title}</h2>
-                <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.textMuted, margin: 0, marginTop: 2 }}>{card.subtitle}</p>
+              <h3 className="font-headline-md text-headline-md text-on-surface mb-1">{card?.title || 'Assessment'}</h3>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">{card?.subtitle || 'View and manage your current assignments.'}</p>
+              {card?.btnLabel ? (
+                <button onClick={card.btnAction} className="w-full py-2 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all shadow-sm">
+                  {card.btnLabel}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-error animate-pulse" />
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">Current status</span>
+                </div>
+              )}
+            </div>
+
+            <div className="group relative bg-surface-container rounded-xl p-4 shadow-sm border border-outline transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer" onClick={() => navigate('/student/review')}>
+              <div className="flex items-start justify-between mb-2">
+                <div className="p-3 bg-secondary-container rounded-xl text-on-secondary-fixed">
+                  <span className="material-symbols-outlined" style={{ fontSize: 32 }}>library_books</span>
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">north_east</span>
+              </div>
+              <h3 className="font-headline-md text-headline-md text-on-surface mb-1">Answer Review</h3>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">Access a detailed breakdown of your performance, including correct answers.</p>
+              <div className="flex items-center gap-2">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">Review your results</span>
               </div>
             </div>
-            {card.btnLabel && (
-              <button
-                onClick={card.btnAction}
-                style={{
-                  width: '100%', background: card.btnColor, color: '#fff', border: 'none',
-                  borderRadius: 999, padding: '13px', fontFamily: 'Space Grotesk', fontSize: 14,
-                  fontWeight: 600, cursor: 'pointer', marginTop: 4,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                }}
-              >
-                {card.btnLabel}
+
+            <div className="group relative bg-surface-container rounded-xl p-4 shadow-sm border border-outline border-dashed transition-all duration-300 hover:bg-error-container/10">
+              <div className="flex items-start justify-between mb-2">
+                <div className="p-3 bg-surface-container-low rounded-xl text-on-surface-variant group-hover:text-error transition-colors">
+                  <span className="material-symbols-outlined" style={{ fontSize: 32 }}>logout</span>
+                </div>
+              </div>
+              <h3 className="font-headline-md text-headline-md text-on-surface mb-1">Logout</h3>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">Securely end your current session.</p>
+              <button onClick={handleLogout} className="w-full py-2 bg-surface-container-high rounded-lg text-on-surface-variant font-label-md text-label-md group-hover:bg-error-container group-hover:text-on-error-container transition-all">
+                Sign Out
               </button>
-            )}
-          </div>
-        )}
-
-        {!loading && data && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ background: C.card, borderRadius: 12, padding: 14, border: `1px solid ${C.border}`, textAlign: 'center' }}>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.textMuted, textTransform: 'uppercase', margin: 0 }}>Exams Taken</p>
-              <p style={{ fontFamily: 'Space Grotesk', fontSize: 24, fontWeight: 700, color: C.primary, margin: '4px 0 0' }}>{data.total_exams_taken}</p>
-            </div>
-            <div style={{ background: C.card, borderRadius: 12, padding: 14, border: `1px solid ${C.border}`, textAlign: 'center' }}>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.textMuted, textTransform: 'uppercase', margin: 0 }}>Avg Score</p>
-              <p style={{ fontFamily: 'Space Grotesk', fontSize: 24, fontWeight: 700, color: C.primary, margin: '4px 0 0' }}>
-                {data.average_score !== null ? `${data.average_score}` : '--'}
-              </p>
             </div>
           </div>
         )}
 
         {!loading && data && data.recent_scores.length > 0 && (
-          <div>
-            <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 10 }}>Recent Scores</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <section className="mt-6">
+            <h3 className="font-headline-md text-headline-md text-on-surface mb-4">Recent Scores</h3>
+            <div className="flex flex-col gap-3">
               {data.recent_scores.map((item) => {
                 const pct = Math.round((item.score / item.total_questions) * 100)
                 return (
-                  <div key={item.date} style={{ background: C.card, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>{dayLabel(item.date)}</p>
-                      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.textMuted, margin: '2px 0 0' }}>{item.score}/{item.total_questions}</p>
+                  <div key={item.date} className="bg-surface-container rounded-xl p-4 border border-outline flex items-center gap-4">
+                    <div className="flex-1">
+                      <p className="font-body-md text-body-md text-on-surface font-medium m-0">{dayLabel(item.date)}</p>
+                      <p className="font-label-md text-label-md text-on-surface-variant m-0 mt-0.5">{item.score}/{item.total_questions}</p>
                     </div>
-                    <div style={{ width: 80, height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: pct >= 70 ? C.success : pct >= 50 ? C.warning : C.danger, borderRadius: 3 }} />
+                    <div className="w-20 h-1.5 bg-outline-variant rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${pct >= 70 ? 'bg-tertiary' : pct >= 50 ? 'bg-secondary' : 'bg-error'}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )
               })}
             </div>
-          </div>
+          </section>
         )}
 
         {!loading && data && data.recent_scores.length === 0 && (
-          <div style={{ background: C.card, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, textAlign: 'center' }}>
-            <Icon name="quiz" size={32} color={C.textMuted} />
-            <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.textMuted, marginTop: 8 }}>No scores yet — take your first exam today!</p>
+          <div className="bg-surface-container rounded-xl p-8 border border-outline text-center mt-6">
+            <span className="material-symbols-outlined text-on-surface-variant/40" style={{ fontSize: 40 }}>quiz</span>
+            <p className="font-body-md text-body-md text-on-surface-variant mt-3">No scores yet — take your first exam today!</p>
           </div>
         )}
       </main>

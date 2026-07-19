@@ -5,13 +5,13 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from exams.models import StudentSubmission
-from pipeline.models import DailyScore, DailyLeaderboard
+from pipeline.models import DailyLeaderboard
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Clean up student data for a given date after the review window closes."
+    help = "Clean up student data for a given date after the review window closes. Preserves DailyScore for historical analytics."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -33,10 +33,10 @@ class Command(BaseCommand):
         self.stdout.write(f"Cleaning up data for {target_date}...")
 
         sub_deleted, _ = StudentSubmission.objects.filter(exam_date=target_date).delete()
-        score_deleted, _ = DailyScore.objects.filter(exam_date=target_date).delete()
         lb_deleted, _ = DailyLeaderboard.objects.filter(exam_date=target_date).delete()
 
         self.stdout.write(self.style.SUCCESS(
             f"Cleanup complete for {target_date}: "
-            f"{sub_deleted} submissions, {score_deleted} scores, {lb_deleted} leaderboard entries deleted."
+            f"{sub_deleted} submissions, {lb_deleted} leaderboard entries deleted. "
+            f"DailyScore records preserved for analytics."
         ))

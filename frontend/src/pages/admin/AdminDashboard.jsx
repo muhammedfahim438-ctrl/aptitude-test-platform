@@ -3,52 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../../api/client'
 import BottomNav from '../../components/BottomNav'
 
-const C = {
-  primary: '#465aa3',
-  primaryContainer: '#EAEFFD',
-  onPrimaryContainer: '#1e347b',
-  secondary: '#8a5108',
-  secondaryContainer: '#FFEEDC',
-  onSecondaryContainer: '#F2924B',
-  tertiary: '#116b51',
-  tertiaryContainer: '#E5FAF1',
-  onTertiaryContainer: '#1F8A5F',
-  surface: '#FBFBFF',
-  surfaceContainer: '#FFFFFF',
-  surfaceContainerLow: '#f5f3fa',
-  surfaceContainerHigh: '#e9e7ee',
-  outline: '#E6E9F7',
-  outlineVariant: '#c5c5d2',
-  onSurface: '#1b1b20',
-  onSurfaceVariant: '#444651',
-  error: '#E2737A',
-  errorContainer: '#ffdad6',
-  background: '#f9f9f7',
-  orange: '#E8621A',
-  orangeContainer: '#FFF0E8',
-}
-
-const Icon = ({ name, size = 24, fill = false, color, style = {} }) => (
-  <span
-    className={`material-symbols-outlined${fill ? ' fill-icon' : ''}`}
-    style={{ fontSize: size, color, lineHeight: 1, ...style }}
-  >
-    {name}
-  </span>
-)
-
 const NAV_TILES = [
-  { key: 'stats', label: 'Stats', icon: 'analytics', path: '/admin/stats', color: C.primary, bg: C.primaryContainer },
-  { key: 'rank', label: 'Rank', icon: 'leaderboard', path: '/admin/rank', color: C.tertiary, bg: C.tertiaryContainer },
-  { key: 'library', label: 'Library', icon: 'inventory_2', path: '/admin/questions', color: C.secondary, bg: C.secondaryContainer },
-  { key: 'reports', label: 'Reports', icon: 'assessment', path: '/admin/reports', color: C.orange, bg: C.orangeContainer },
-]
-
-const QUICK_ACTIONS = [
-  { label: 'Upload Questions', icon: 'upload_file', path: '/admin/questions/upload', color: C.primary, bg: C.primaryContainer },
-  { label: 'View Scorers', icon: 'leaderboard', path: '/admin/rank', color: C.tertiary, bg: C.tertiaryContainer },
-  { label: 'Analytics', icon: 'monitoring', path: '/admin/stats', color: C.orange, bg: C.orangeContainer },
-  { label: 'Download Report', icon: 'download', path: '/admin/reports', color: C.secondary, bg: C.secondaryContainer },
+  { key: 'stats', label: 'Stats', icon: 'analytics', path: '/admin/stats' },
+  { key: 'rank', label: 'Rank', icon: 'leaderboard', path: '/admin/rank' },
+  { key: 'library', label: 'Library', icon: 'inventory_2', path: '/admin/questions' },
+  { key: 'reports', label: 'Reports', icon: 'assessment', path: '/admin/reports' },
 ]
 
 export default function AdminDashboard() {
@@ -75,13 +34,6 @@ export default function AdminDashboard() {
     fetchStats()
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user')
-    navigate('/admin/login')
-  }
-
   const firstName = (() => {
     try {
       const u = JSON.parse(localStorage.getItem('user'))
@@ -91,109 +43,136 @@ export default function AdminDashboard() {
     }
   })()
 
-  const metricCards = [
-    { label: 'Total Students', value: stats.totalStudents, icon: 'groups', color: C.primary, bg: C.primaryContainer },
-    { label: 'Tests Completed Today', value: stats.testsCompletedToday, icon: 'quiz', color: C.tertiary, bg: C.tertiaryContainer },
-    { label: 'Questions Live Today', value: stats.questionsLiveToday, icon: 'help_outline', color: C.orange, bg: C.orangeContainer },
-  ]
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="bg-admin-surface-container-lowest text-admin-on-surface flex flex-col min-h-screen">
 
-      {/* Header */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: C.surfaceContainer, borderBottom: `1px solid ${C.outline}`, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(70,90,163,0.08)' }}>
-        <div>
-          <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 600, color: C.onSurface }}>Admin Dashboard</h1>
-          <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.onSurfaceVariant, marginTop: 2 }}>Welcome, {firstName}</p>
+      <header className="sticky top-0 z-50 bg-admin-surface flex justify-between items-center w-full px-5 h-16 transition-colors duration-200 ease-in-out border-b border-admin-outline-variant">
+        <div className="flex items-center gap-4">
+          <button className="p-2 rounded-full hover:bg-admin-surface-container-high transition-colors">
+            <span className="material-symbols-outlined text-admin-secondary">menu</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-admin-primary-container flex items-center justify-center overflow-hidden">
+              <img src="/app-logo.png" alt="" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-headline-sm font-headline-md font-bold text-admin-on-surface">APPTIST</span>
+          </div>
         </div>
-        <button onClick={handleLogout} style={{ background: C.surfaceContainerLow, border: `1px solid ${C.outline}`, borderRadius: 10, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Icon name="logout" size={20} color={C.onSurfaceVariant} />
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-label-md font-label-md text-admin-on-surface-variant">{today}</span>
+          </div>
+          <button className="relative p-2 rounded-full hover:bg-admin-surface-container-high transition-colors">
+            <span className="material-symbols-outlined text-admin-on-surface-variant">notifications</span>
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-admin-primary rounded-full border-2 border-admin-surface" />
+          </button>
+        </div>
       </header>
 
-      <div style={{ height: 64 }} />
+      <main className="flex-1 px-5 pt-4 pb-32 space-y-8 max-w-5xl mx-auto w-full">
 
-      <main style={{ flex: 1, padding: '20px 16px 110px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <section className="relative overflow-hidden rounded-lg p-6 flex flex-col justify-center min-h-[160px] shadow-md border border-admin-outline-variant/30" style={{ background: 'linear-gradient(135deg, #ff8c33 0%, #ff6b00 100%)' }}>
+          <div className="relative z-10">
+            <h2 className="text-display-lg font-display-lg text-white mb-2">Good morning, {firstName}!</h2>
+            <p className="text-body-lg font-body-lg text-white/90">Here is your platform activity for today.</p>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white opacity-10 rounded-full blur-3xl" />
+        </section>
 
-        {/* Nav Tiles */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-          {NAV_TILES.map((tile) => (
-            <button
-              key={tile.key}
-              onClick={() => navigate(tile.path)}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                background: tile.bg, border: 'none', borderRadius: 14, padding: '14px 4px',
-                cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
-              <Icon name={tile.icon} size={26} color={tile.color} />
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 500, color: tile.color, letterSpacing: '0.03em' }}>{tile.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <div>
-          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, color: C.onSurface, marginBottom: 10 }}>Quick Actions</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {QUICK_ACTIONS.map((action) => (
-              <button
-                key={action.label}
-                onClick={() => navigate(action.path)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  background: C.surfaceContainer, border: `1px solid ${C.outline}`,
-                  borderRadius: 12, padding: '14px 12px', cursor: 'pointer',
-                  transition: 'all 0.2s', boxShadow: '0 1px 4px rgba(70,90,163,0.06)',
-                }}
+        <section className="space-y-3">
+          <h3 className="text-label-md font-label-md text-admin-on-surface-variant tracking-widest uppercase px-1">Navigation</h3>
+          <div className="grid grid-cols-2 gap-4 md:gap-6 py-2">
+            {NAV_TILES.map((tile) => (
+              <div
+                key={tile.key}
+                onClick={() => navigate(tile.path)}
+                className="bg-admin-secondary-container p-4 rounded-lg flex flex-col gap-2 shadow-sm border border-admin-secondary/10 hover:scale-95 transition-transform cursor-pointer"
               >
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon name={action.icon} size={20} color={action.color} />
+                <div className="flex justify-between items-start">
+                  <span className="material-symbols-outlined text-admin-secondary p-2 bg-white/50 rounded-xl">{tile.icon}</span>
                 </div>
-                <span style={{ fontFamily: 'Space Grotesk', fontSize: 13, fontWeight: 600, color: C.onSurface, textAlign: 'left' }}>{action.label}</span>
-              </button>
+                <div>
+                  <p className="text-headline-sm font-bold text-admin-secondary">{tile.label}</p>
+                </div>
+              </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Metric Cards */}
-        <div>
-          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, color: C.onSurface, marginBottom: 10 }}>Overview</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {loading ? (
-              [1, 2, 3].map((i) => (
-                <div key={i} style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 14, padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: C.surfaceContainerLow, animation: 'pulse 2s ease infinite' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ width: '60%', height: 10, borderRadius: 4, background: C.surfaceContainerLow, marginBottom: 6, animation: 'pulse 2s ease infinite' }} />
-                    <div style={{ width: '30%', height: 20, borderRadius: 4, background: C.surfaceContainerLow, animation: 'pulse 2s ease infinite' }} />
-                  </div>
-                </div>
-              ))
-            ) : (
-              metricCards.map((card) => (
-                <div key={card.label} style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 14, padding: 16, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 4px rgba(70,90,163,0.06)' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: card.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={card.icon} size={24} color={card.color} />
-                  </div>
-                  <div>
-                    <p style={{ fontFamily: 'Inter', fontSize: 12, color: C.onSurfaceVariant }}>{card.label}</p>
-                    <p style={{ fontFamily: 'Space Grotesk', fontSize: 22, fontWeight: 700, color: C.onSurface }}>{card.value}</p>
-                  </div>
-                </div>
-              ))
-            )}
+        <section className="space-y-3">
+          <h3 className="text-label-md font-label-md text-admin-on-surface-variant tracking-widest uppercase px-1">Quick Actions</h3>
+          <div className="flex overflow-x-auto gap-4 py-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <button onClick={() => navigate('/admin/questions/upload')} className="flex items-center gap-2 px-6 py-3 bg-admin-primary text-white font-headline-sm whitespace-nowrap rounded-full shadow-sm hover:scale-95 transition-transform shrink-0">
+              <span className="material-symbols-outlined text-[20px]">upload</span>
+              <span className="text-body-md font-bold">Upload Questions</span>
+            </button>
+            <button onClick={() => navigate('/admin/rank')} className="flex items-center gap-2 px-6 py-3 bg-admin-secondary-container text-admin-secondary font-headline-sm whitespace-nowrap rounded-full shadow-sm hover:scale-95 transition-transform shrink-0 border border-admin-secondary/10">
+              <span className="material-symbols-outlined text-[20px]">emoji_events</span>
+              <span className="text-body-md font-bold">View Scorers</span>
+            </button>
+            <button onClick={() => navigate('/admin/stats')} className="flex items-center gap-2 px-6 py-3 bg-admin-secondary-container text-admin-secondary font-headline-sm whitespace-nowrap rounded-full shadow-sm hover:scale-95 transition-transform shrink-0 border border-admin-secondary/10">
+              <span className="material-symbols-outlined text-[20px]">bar_chart</span>
+              <span className="text-body-md font-bold">Analytics</span>
+            </button>
           </div>
-        </div>
+        </section>
+
+        <section className="grid grid-cols-2 gap-4 md:gap-6">
+          {loading ? (
+            [1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-admin-surface-container-low p-4 rounded-lg shadow-sm border border-admin-outline-variant/50 animate-pulse">
+                <div className="w-9 h-9 rounded-xl bg-admin-surface-container mb-3" />
+                <div className="w-16 h-7 rounded bg-admin-surface-container mb-1" />
+                <div className="w-24 h-3 rounded bg-admin-surface-container" />
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="bg-admin-surface-container-low p-4 rounded-lg flex flex-col gap-2 shadow-sm border border-admin-outline-variant/50 hover:border-admin-secondary/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="material-symbols-outlined text-admin-secondary p-2 bg-admin-secondary-container rounded-xl">group</span>
+                </div>
+                <div>
+                  <p className="text-display-lg font-display-lg text-admin-on-surface">{stats.totalStudents.toLocaleString()}</p>
+                  <p className="text-label-md font-label-md text-admin-on-surface-variant">Total Students</p>
+                </div>
+              </div>
+              <div className="bg-admin-surface-container-low p-4 rounded-lg flex flex-col gap-2 shadow-sm border border-admin-outline-variant/50 hover:border-admin-secondary/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="material-symbols-outlined text-admin-secondary p-2 bg-admin-secondary-container rounded-xl">check_circle</span>
+                </div>
+                <div>
+                  <p className="text-display-lg font-display-lg text-admin-on-surface">{stats.testsCompletedToday}</p>
+                  <p className="text-label-md font-label-md text-admin-on-surface-variant">Tests Completed</p>
+                </div>
+              </div>
+              <div className="bg-admin-surface-container-low p-4 rounded-lg flex flex-col gap-2 shadow-sm border border-admin-outline-variant/50 hover:border-admin-secondary/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="material-symbols-outlined text-admin-primary p-2 bg-orange-100 rounded-xl">description</span>
+                  <span className="text-label-sm font-label-sm text-admin-primary font-bold">Live</span>
+                </div>
+                <div>
+                  <p className="text-display-lg font-display-lg text-admin-on-surface">{stats.questionsLiveToday}</p>
+                  <p className="text-label-md font-label-md text-admin-on-surface-variant">Questions Live</p>
+                </div>
+              </div>
+              <div className="bg-admin-surface-container-low p-4 rounded-lg flex flex-col gap-2 shadow-sm border border-admin-outline-variant/50 hover:border-admin-primary/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className="material-symbols-outlined text-admin-primary p-2 bg-admin-primary-container rounded-xl">school</span>
+                </div>
+                <div>
+                  <p className="text-display-lg font-display-lg text-admin-on-surface">{firstName}</p>
+                  <p className="text-label-md font-label-md text-admin-on-surface-variant">Logged In</p>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
       </main>
 
       <BottomNav active="home" />
-
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-      `}</style>
     </div>
   )
 }

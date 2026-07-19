@@ -1,150 +1,28 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { examAPI } from '../../api/client';
-
-const C = {
-  primary: '#465aa3',
-  primaryContainer: '#EAEFFD',
-  onPrimaryContainer: '#1e347b',
-  success: '#116b51',
-  successContainer: '#E5FAF1',
-  error: '#E2737A',
-  errorContainer: '#FCEAEC',
-  onErrorContainer: '#93000a',
-  warning: '#F2924B',
-  warningContainer: '#FFEEDC',
-  onSurface: '#1b1b20',
-  onSurfaceVariant: '#6C7596',
-  surface: '#FFFFFF',
-  surfaceContainerLow: '#f5f3fa',
-  background: '#faf8ff',
-  outline: '#E6E9F7',
-  border: '#ece9e2',
-}
-
-const Icon = ({ name, size = 24, color, style = {} }) => (
-  <span className="material-symbols-outlined"
-    style={{ fontSize: size, color, lineHeight: 1, ...style }}>{name}</span>
-)
-
-function getOptionText(question, label) {
-  if (!question || !label) return null
-  const map = { A: question.option_a, B: question.option_b, C: question.option_c, D: question.option_d }
-  return map[label] || null
-}
-
-function OptionRow({ label, text, state }) {
-  const styles = {
-    base: {
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 14px', borderRadius: 8, fontSize: 14,
-    },
-    neutral: { border: '1px solid #e5e3dd', background: '#fff', color: C.onSurface },
-    correct: { border: '2px solid #116b51', background: C.successContainer, color: C.success },
-    wrong: { border: '2px solid #E2737A', background: C.errorContainer, color: C.onErrorContainer },
-    dim: { border: '1px dashed #d6d4ce', background: '#fafafa', color: '#8a8a86' },
-  }
-  const style = { ...styles.base, ...styles[state] }
-  const badge = state === 'correct'
-    ? <Icon name="check_circle" size={18} color={C.success} />
-    : state === 'wrong'
-      ? <Icon name="cancel" size={18} color={C.error} />
-      : null
-  return (
-    <div style={style}>
-      <span style={{ fontWeight: 700, minWidth: 18 }}>{label}.</span>
-      <span style={{ flex: 1 }}>{text}</span>
-      {badge}
-    </div>
-  )
-}
-
-function ReviewQuestion({ question, userAnswer, correctAnswer }) {
-  const isCorrect = userAnswer === correctAnswer
-  const options = [
-    { label: 'A', value: question.option_a },
-    { label: 'B', value: question.option_b },
-    { label: 'C', value: question.option_c },
-    { label: 'D', value: question.option_d },
-  ].filter(o => o.value)
-
-  const resultColor = isCorrect ? C.success : C.error
-  const resultBg = isCorrect ? C.successContainer : C.errorContainer
-  const resultText = isCorrect ? 'Correct' : userAnswer ? 'Wrong' : 'Skipped'
-  const resultIcon = isCorrect ? 'check_circle' : (userAnswer ? 'cancel' : 'remove_circle')
-
-  return (
-    <div style={{
-      background: C.surface, border: '1px solid #ece9e2', borderRadius: 14, padding: 16,
-    }}>
-      {question.image_url && (
-        <div style={{
-          width: '100%', aspectRatio: '16 / 9', borderRadius: 10, overflow: 'hidden',
-          marginBottom: 12, background: '#f5f5f2',
-        }}>
-          <img src={question.image_url} alt={`Question ${question.id} diagram`}
-            loading="lazy"
-            onError={(e) => { e.target.style.display = 'none' }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      )}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: C.onSurface, flex: 1, margin: 0 }}>
-          <strong>Q{question.id}.</strong> {question.text}
-        </p>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '4px 10px', borderRadius: 999,
-          background: resultBg, color: resultColor, fontSize: 12, fontWeight: 600,
-          fontFamily: 'JetBrains Mono', flexShrink: 0,
-        }}>
-          <Icon name={resultIcon} size={14} color={resultColor} />
-          {resultText}
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {options.map((opt) => {
-          let state = 'neutral'
-          if (opt.label === correctAnswer) state = 'correct'
-          else if (opt.label === userAnswer) state = 'wrong'
-          else if (correctAnswer) state = 'dim'
-          return <OptionRow key={opt.label} label={opt.label} text={opt.value} state={state} />
-        })}
-      </div>
-    </div>
-  )
-}
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { examAPI } from '../../api/client'
+import StudentBottomNav from '../../components/StudentBottomNav'
 
 function WindowBanner({ status, opensAt, closesAt }) {
   const config = {
     before_window: {
-      bg: C.warningContainer, color: C.warning, icon: 'schedule',
-      title: 'Answer key not released yet',
+      bg: 'bg-secondary-container/30', border: 'border-secondary/20', iconColor: 'text-secondary',
+      icon: 'schedule', title: 'Answer key not released yet',
       body: `The answer key will be available at ${opensAt} IST. Polling every 60s.`,
     },
     after_window: {
-      bg: C.errorContainer, color: C.error, icon: 'lock',
-      title: 'Review period ended',
+      bg: 'bg-error-container/30', border: 'border-error/20', iconColor: 'text-error',
+      icon: 'lock', title: 'Review period ended',
       body: `The answer key was visible from ${opensAt} to ${closesAt} IST.`,
     },
   }[status]
-
   if (!config) return null
-
   return (
-    <div style={{
-      background: config.bg, border: `1px solid ${config.color}30`,
-      borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 12,
-    }}>
-      <Icon name={config.icon} size={28} color={config.color} />
+    <div className={`${config.bg} border ${config.border} rounded-xl p-4 flex items-center gap-3`}>
+      <span className={`material-symbols-outlined ${config.iconColor}`} style={{ fontSize: 28 }}>{config.icon}</span>
       <div>
-        <p style={{ fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 700, color: config.color, margin: 0 }}>
-          {config.title}
-        </p>
-        <p style={{ fontFamily: 'Inter', fontSize: 13, color: C.onSurfaceVariant, margin: '4px 0 0' }}>
-          {config.body}
-        </p>
+        <p className={`font-headline-md text-headline-md ${config.iconColor} m-0`}>{config.title}</p>
+        <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 m-0">{config.body}</p>
       </div>
     </div>
   )
@@ -157,6 +35,7 @@ export default function AnswerReview() {
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [currentIdx, setCurrentIdx] = useState(0)
 
   const fetchReview = useCallback(async () => {
     try {
@@ -164,8 +43,7 @@ export default function AnswerReview() {
       setReview(res.data)
       setError(null)
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Unable to load your review.'
-      setError(msg)
+      setError(err.response?.data?.detail || 'Unable to load your review.')
     }
   }, [examDate])
 
@@ -173,9 +51,7 @@ export default function AnswerReview() {
     try {
       const res = await examAPI.getQuestions(examDate)
       setQuestions(res.data.questions || [])
-    } catch {
-      setQuestions([])
-    }
+    } catch { setQuestions([]) }
   }, [examDate])
 
   useEffect(() => {
@@ -186,12 +62,11 @@ export default function AnswerReview() {
       if (!cancelled) setLoading(false)
     }
     init()
-    return () => { cancelled = true; }
+    return () => { cancelled = true }
   }, [fetchReview, fetchQuestions])
 
   useEffect(() => {
-    if (!review) return
-    if (review.window_status !== 'before_window') return
+    if (!review || review.window_status !== 'before_window') return
     const t = setInterval(() => { fetchReview() }, 60000)
     return () => clearInterval(t)
   }, [review, fetchReview])
@@ -209,123 +84,143 @@ export default function AnswerReview() {
     return { right, wrong, skipped, total: Object.keys(correct).length }
   }, [review])
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.background, fontFamily: 'Inter' }}>
-        <p style={{ color: C.onSurfaceVariant }}>Loading your review...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, fontFamily: 'Inter' }}>
-        <header style={{ background: C.surface, padding: '12px 16px', borderBottom: `1px solid ${C.outline}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 24, color: C.primary, cursor: 'pointer' }}
-            onClick={() => navigate('/student/dashboard')}>
-            arrow_back
-          </span>
-          <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.onSurface }}>Answer Review</h1>
-        </header>
-        <div style={{ padding: 24, textAlign: 'center' }}>
-          <div style={{ background: C.errorContainer, borderRadius: 12, padding: 16, color: C.onErrorContainer }}>{error}</div>
-        </div>
-      </div>
-    )
-  }
-
-  const windowOpen = review?.window_status === 'open'
   const questionsById = useMemo(() => {
     const map = {}
     questions.forEach(q => { map[q.id] = q })
     return map
   }, [questions])
 
+  const windowOpen = review?.window_status === 'open'
+  const correctAnswers = review?.correct_answers || {}
+  const userAnswers = review?.answers || {}
+  const questionIds = Object.keys(correctAnswers)
+
+  const currentQid = questionIds[currentIdx]
+  const qNum = currentQid ? parseInt(String(currentQid).replace(/\D/g, ''), 10) : null
+  const currentQuestion = qNum ? (questionsById[qNum] || questionsById[currentQid]) : null
+  const currentCorrect = correctAnswers[currentQid]
+  const currentUser = userAnswers[currentQid]
+  const isCorrect = currentUser === currentCorrect
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-on-surface-variant">Loading your review...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <header className="bg-surface-container-lowest p-3 border-b border-outline flex items-center gap-3">
+          <span className="material-symbols-outlined text-primary cursor-pointer" onClick={() => navigate('/student/dashboard')}>arrow_back</span>
+          <h1 className="font-headline-md text-headline-md text-on-surface">Answer Review</h1>
+        </header>
+        <div className="p-6 text-center">
+          <div className="bg-error-container rounded-xl p-4 text-on-error-container">{error}</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: C.background, fontFamily: 'Inter, sans-serif', paddingBottom: 80 }}>
-      <header style={{ background: C.surface, padding: '12px 16px', borderBottom: `1px solid ${C.outline}`, display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 30 }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 24, color: C.primary, cursor: 'pointer' }}
-          onClick={() => navigate('/student/dashboard')}>
-          arrow_back
-        </span>
-        <div>
-          <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: C.onSurface, margin: 0 }}>Answer Review</h1>
-          <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.onSurfaceVariant, margin: 0 }}>{review?.date}</p>
+    <div className="min-h-screen bg-background flex flex-col pb-20">
+      <header className="bg-surface-container shadow-sm docked top-0 z-50 fixed border-b border-outline/30">
+        <div className="flex items-center justify-between px-4 h-16">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/student/dashboard')} className="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+              <span className="material-symbols-outlined text-on-surface">arrow_back</span>
+            </button>
+            <h1 className="font-headline-md text-headline-md text-primary">Answer Review</h1>
+          </div>
+          <span className="font-label-sm text-label-sm text-on-surface-variant">{review?.date}</span>
         </div>
       </header>
 
-      <main style={{ padding: '16px', maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <main className="flex-grow flex flex-col items-center p-4 gap-6 pt-20 overflow-x-hidden">
         {!windowOpen && review && (
-          <WindowBanner
-            status={review.window_status}
-            opensAt={review.opens_at}
-            closesAt={review.closes_at}
-          />
+          <WindowBanner status={review.window_status} opensAt={review.opens_at} closesAt={review.closes_at} />
         )}
 
         {windowOpen && stats && (
-          <div style={{
-            background: C.primaryContainer, border: `1px solid ${C.primary}30`, borderRadius: 14,
-            padding: 16, display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '50%', background: C.primary,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 20, fontWeight: 700, color: '#fff' }}>
-                {review.score ?? stats.right}
-              </span>
+          <div className="w-full max-w-lg bg-primary-container border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shrink-0">
+              <span className="font-label-md text-label-md text-on-primary font-bold">{review.score ?? stats.right}</span>
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 700, color: C.onPrimaryContainer, margin: 0 }}>
-                Your Score
-              </p>
-              <p style={{ fontFamily: 'Inter', fontSize: 12, color: C.onSurfaceVariant, margin: '2px 0 6px' }}>
-                {stats.right} correct · {stats.wrong} wrong · {stats.skipped} skipped
-              </p>
-              <div style={{ display: 'flex', gap: 4, height: 8, borderRadius: 4, overflow: 'hidden', background: '#fff' }}>
-                <div style={{ width: `${(stats.right / stats.total) * 100}%`, background: C.success }} />
-                <div style={{ width: `${(stats.wrong / stats.total) * 100}%`, background: C.error }} />
-                <div style={{ width: `${(stats.skipped / stats.total) * 100}%`, background: '#d6d4ce' }} />
+            <div className="flex-1">
+              <p className="font-headline-md text-headline-md text-on-primary-container m-0">Your Score</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5 mb-1.5">{stats.right} correct · {stats.wrong} wrong · {stats.skipped} skipped</p>
+              <div className="flex gap-1 h-2 rounded overflow-hidden bg-white">
+                <div className="bg-tertiary rounded" style={{ width: `${(stats.right / stats.total) * 100}%` }} />
+                <div className="bg-error rounded" style={{ width: `${(stats.wrong / stats.total) * 100}%` }} />
+                <div className="bg-outline-variant rounded" style={{ width: `${(stats.skipped / stats.total) * 100}%` }} />
               </div>
             </div>
           </div>
         )}
 
-        {windowOpen && review?.correct_answers ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {Object.entries(review.correct_answers).map(([qid, correctLabel]) => {
-              const qNum = parseInt(String(qid).replace(/\D/g, ''), 10)
-              const question = questionsById[qNum] || questionsById[qid]
-              if (!question) {
-                return (
-                  <div key={qid} style={{ background: C.surface, border: `1px solid ${C.outline}`, borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontWeight: 600, color: C.onSurface }}>Q{qid}</p>
-                    <p style={{ fontSize: 13, color: C.onSurfaceVariant, marginTop: 8 }}>
-                      Correct answer: <strong>{correctLabel}</strong>
-                      {review.answers?.[qid] && (
-                        <> · You answered: <strong>{review.answers[qid]}</strong></>
-                      )}
-                    </p>
+        {windowOpen && currentQuestion ? (
+          <div className="w-full bg-surface-container rounded-xl shadow-md overflow-hidden border border-outline flex flex-col" style={{ maxWidth: 480 }}>
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-start gap-4 mb-4">
+                <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Question {currentIdx + 1}</h2>
+                <span className={`font-label-sm text-label-sm px-3 py-1 rounded-full whitespace-nowrap mt-1 ${isCorrect ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-error-container text-on-error-container'}`}>
+                  {isCorrect ? 'Correct' : currentUser ? 'Wrong' : 'Skipped'}
+                </span>
+              </div>
+              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed break-words">{currentQuestion.text}</p>
+
+              {currentQuestion.image_url && (
+                <div className="w-full rounded-xl overflow-hidden bg-surface-container-low">
+                  <img src={currentQuestion.image_url} alt="" className="w-full max-h-48 object-contain" />
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {currentUser && (
+                  <div className={`w-full flex items-center justify-between p-4 rounded-xl border ${isCorrect ? 'bg-tertiary-container border-tertiary/20' : 'bg-error-container border-error/20'}`}>
+                    <div className="flex flex-col gap-1">
+                      <span className={`font-label-sm text-label-sm uppercase tracking-wider ${isCorrect ? 'text-on-tertiary-container/70' : 'text-on-error-container/70'}`}>Your Answer</span>
+                      <span className={`font-headline-md text-headline-md ${isCorrect ? 'text-on-tertiary-container' : 'text-on-error-container'}`}>{currentUser} {currentQuestion[`option_${currentUser.toLowerCase()}`]}</span>
+                    </div>
+                    <span className={`material-symbols-outlined font-bold text-2xl ${isCorrect ? 'text-tertiary' : 'text-error'}`} style={{ fontVariationSettings: isCorrect ? "'FILL' 1" : "'FILL' 0" }}>{isCorrect ? 'check' : 'close'}</span>
                   </div>
-                )
-              }
-              return (
-                <ReviewQuestion
-                  key={qid}
-                  question={question}
-                  userAnswer={review.answers?.[qid]}
-                  correctAnswer={correctLabel}
-                />
-              )
-            })}
+                )}
+                <div className="w-full flex items-center justify-between p-4 bg-tertiary-container border border-tertiary/20 rounded-xl">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-label-sm text-label-sm text-on-tertiary-container/70 uppercase tracking-wider">Correct Answer</span>
+                    <span className="font-headline-md text-headline-md text-on-tertiary-container">{currentCorrect} {currentQuestion[`option_${currentCorrect.toLowerCase()}`]}</span>
+                  </div>
+                  <span className="material-symbols-outlined text-tertiary font-bold text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                </div>
+              </div>
+            </div>
           </div>
         ) : windowOpen ? (
-          <div style={{ background: C.surfaceContainerLow, border: `1px solid ${C.outline}`, borderRadius: 12, padding: 16, textAlign: 'center', color: C.onSurfaceVariant }}>
+          <div className="bg-surface-container-high border border-outline rounded-xl p-6 text-center text-on-surface-variant">
             Answer key has not been published yet.
           </div>
         ) : null}
+
+        {windowOpen && questionIds.length > 1 && (
+          <div className="w-full flex justify-between items-center gap-4" style={{ maxWidth: 480 }}>
+            <button onClick={() => setCurrentIdx(i => Math.max(0, i - 1))} disabled={currentIdx === 0}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-full font-label-md text-label-md text-on-surface-variant bg-surface-container hover:bg-surface-variant transition-all border border-outline disabled:opacity-40">
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
+              Previous
+            </button>
+            <button onClick={() => setCurrentIdx(i => Math.min(questionIds.length - 1, i + 1))} disabled={currentIdx === questionIds.length - 1}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-full font-label-md text-label-md text-on-primary bg-primary hover:opacity-90 active:scale-95 transition-all shadow-sm disabled:opacity-40">
+              Next
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+            </button>
+          </div>
+        )}
       </main>
+
+      <div className="h-20 md:hidden" />
+      <StudentBottomNav />
     </div>
   )
 }

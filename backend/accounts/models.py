@@ -1,14 +1,29 @@
 # accounts/models.py
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
 
-from .managers import CustomUserManager
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra):
+        if not email:
+            raise ValueError('Email is required')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password, **extra):
+        extra.setdefault('is_staff', True)
+        extra.setdefault('is_superuser', True)
+        return self.create_user(email, password, **extra)
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email       = models.EmailField(unique=True)
     full_name   = models.CharField(max_length=150)
     roll_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    department  = models.CharField(max_length=150, blank=True, default='')
     is_student  = models.BooleanField(default=False)
     is_teacher  = models.BooleanField(default=False)
     is_active   = models.BooleanField(default=True)

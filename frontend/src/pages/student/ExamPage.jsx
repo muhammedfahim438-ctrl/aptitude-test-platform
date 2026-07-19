@@ -1,276 +1,252 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
-import QuestionCard from '../../components/QuestionCard';
-import useExamCountdown from '../../hooks/useExamCountdown';
-import { usePersistedAnswers } from '../../hooks/usePersistedAnswers';
-import { examAPI } from '../../api/client';
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { jwtDecode } from 'jwt-decode'
+import useExamCountdown from '../../hooks/useExamCountdown'
+import { usePersistedAnswers } from '../../hooks/usePersistedAnswers'
+import { examAPI } from '../../api/client'
 
-const orange = '#E8621A';
+const OPTION_LABELS = ['A', 'B', 'C', 'D']
 
 function getExamEndTime(examDate) {
-  return new Date(`${examDate}T14:00:00`);
+  return new Date(`${examDate}T14:00:00`)
 }
 
 function getExamStartTime(examDate) {
-  return new Date(`${examDate}T10:00:00`);
+  return new Date(`${examDate}T10:00:00`)
 }
 
 export default function ExamPage() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [examDate] = useState(() => new Date().toISOString().slice(0, 10));
-
-  const [questions, setQuestions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+  const [examDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [questions, setQuestions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [currentIdx, setCurrentIdx] = useState(0)
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-    try {
-      const decoded = jwtDecode(token);
-      setUser(decoded);
-    } catch {
-      setUser(null);
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      try { setUser(jwtDecode(token)) } catch { setUser(null) }
     }
-  }, []);
+  }, [])
 
-  const userId = user?.user_id ?? user?.sub ?? 'anonymous';
-  const { answers, saveAnswer, clearAnswers } = usePersistedAnswers(userId, examDate);
+  const userId = user?.user_id ?? user?.sub ?? 'anonymous'
+  const { answers, saveAnswer, clearAnswers } = usePersistedAnswers(userId, examDate)
 
-  const now = new Date();
-  const examStart = getExamStartTime(examDate);
-  const examEnd = getExamEndTime(examDate);
-  const isBeforeWindow = now < examStart;
-  const isAfterWindow = now > examEnd;
-  const isReadOnly = isAfterWindow || submitted;
+  const now = new Date()
+  const examStart = getExamStartTime(examDate)
+  const examEnd = getExamEndTime(examDate)
+  const isBeforeWindow = now < examStart
+  const isAfterWindow = now > examEnd
+  const isReadOnly = isAfterWindow || submitted
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
     async function fetchQuestions() {
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
       try {
-        const res = await examAPI.getQuestions(examDate);
-        if (!cancelled) {
-          setQuestions(res.data.questions || []);
-        }
+        const res = await examAPI.getQuestions(examDate)
+        if (!cancelled) setQuestions(res.data.questions || [])
       } catch (err) {
         if (!cancelled) {
-          const msg =
-            err.response?.status === 503
-              ? 'Questions are loading, please wait a moment and refresh.'
-              : err.response?.data?.error || 'Failed to load questions. Please refresh.';
-          setError(msg);
+          setError(err.response?.status === 503
+            ? 'Questions are loading, please wait a moment and refresh.'
+            : err.response?.data?.error || 'Failed to load questions. Please refresh.')
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoading(false)
       }
     }
-    if (!isBeforeWindow) fetchQuestions();
-    else setLoading(false);
-    return () => { cancelled = true; };
-  }, [examDate, isBeforeWindow]);
+    if (!isBeforeWindow) fetchQuestions()
+    else setLoading(false)
+    return () => { cancelled = true }
+  }, [examDate, isBeforeWindow])
 
-  const handleSubmit = useCallback(
-    async (isAutoSubmit = false) => {
-      if (submitted) return;
-      setSubmitting(true);
-      setSubmitError(null);
-
-      const attempt = async (retriesLeft) => {
-        try {
-          await examAPI.submitAnswers(examDate, answers);
-          setSubmitted(true);
-          clearAnswers();
-          navigate('/student/result', { replace: true });
-        } catch (err) {
-          const status = err.response?.status;
-          const isRetryable = !status || status === 503 || status === 500;
-          if (retriesLeft > 0 && isRetryable) {
-            await new Promise((r) => setTimeout(r, 2000));
-            return attempt(retriesLeft - 1);
-          }
-          const msg = err.response?.data?.error || err.message || 'Unknown error';
-          setSubmitError(
-            isAutoSubmit
-              ? `Auto-submit failed: ${msg}. Please submit manually if possible.`
-              : `Submission failed: ${msg}`
-          );
+  const handleSubmit = useCallback(async (isAutoSubmit = false) => {
+    if (submitted) return
+    setSubmitting(true)
+    setSubmitError(null)
+    const attempt = async (retriesLeft) => {
+      try {
+        await examAPI.submitAnswers(examDate, answers)
+        setSubmitted(true)
+        clearAnswers()
+        navigate('/student/result', { replace: true })
+      } catch (err) {
+        const status = err.response?.status
+        const isRetryable = !status || status === 503 || status === 500
+        if (retriesLeft > 0 && isRetryable) {
+          await new Promise(r => setTimeout(r, 2000))
+          return attempt(retriesLeft - 1)
         }
-      };
-      await attempt(isAutoSubmit ? 3 : 0);
-      setSubmitting(false);
-    },
-    [examDate, answers, submitted, clearAnswers, navigate]
-  );
+        const msg = err.response?.data?.error || err.message || 'Unknown error'
+        setSubmitError(isAutoSubmit ? `Auto-submit failed: ${msg}. Please submit manually if possible.` : `Submission failed: ${msg}`)
+      }
+    }
+    await attempt(isAutoSubmit ? 3 : 0)
+    setSubmitting(false)
+  }, [examDate, answers, submitted, clearAnswers, navigate])
 
   const handleAutoSubmit = useCallback(() => {
-    if (questions.length === 0) return;
-    handleSubmit(true);
-  }, [handleSubmit, questions.length]);
+    if (questions.length === 0) return
+    handleSubmit(true)
+  }, [handleSubmit, questions.length])
 
-  const timerDisplay = useExamCountdown(examEnd, handleAutoSubmit);
-  const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
+  const timerDisplay = useExamCountdown(examEnd, handleAutoSubmit)
+  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+  const currentQuestion = questions[currentIdx]
 
   if (isBeforeWindow && !loading) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', background: '#f9f9f7',
-        padding: 24, fontFamily: 'Inter, sans-serif', gap: 16,
-      }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#465aa3' }}>
-          schedule
-        </span>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1c1c1b' }}>Exam not started yet</h2>
-        <p style={{ fontSize: 14, color: '#6b7280', textAlign: 'center' }}>
-          The exam window opens at 10:00 AM IST.<br />
-          Please come back then.
-        </p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 gap-4">
+        <span className="material-symbols-outlined text-primary" style={{ fontSize: 48 }}>schedule</span>
+        <h2 className="font-headline-md text-headline-md text-on-surface">Exam not started yet</h2>
+        <p className="font-body-md text-body-md text-on-surface-variant text-center">The exam window opens at 10:00 AM IST.<br />Please come back then.</p>
       </div>
-    );
+    )
+  }
+
+  const getOptionState = (label) => {
+    if (answers[`q${currentQuestion?.id}`] === label) return 'selected'
+    return 'unselected'
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', background: '#f9f9f7',
-      fontFamily: 'Inter, sans-serif',
-    }}>
-      {/* Sticky Header */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        background: '#fff', borderBottom: '1px solid #e5e7eb',
-        padding: '12px 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 700, color: '#465aa3' }}>
-            Aptitude Test
-          </span>
+    <div className="min-h-screen bg-background text-on-surface overflow-x-hidden">
+      <header className="fixed top-0 w-full z-50 bg-surface shadow-sm flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/student/dashboard')} className="flex items-center justify-center p-1 hover:bg-primary-container/50 transition-colors rounded-full active:scale-95">
+            <span className="material-symbols-outlined text-primary">arrow_back</span>
+          </button>
+          <h1 className="font-headline-md text-headline-md text-primary truncate max-w-[180px] md:max-w-none">Aptitude Test</h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{
-            fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 500,
-            color: '#6b7280',
-          }}>
-            {answeredCount}/{questions.length}
-          </span>
+        <div className="flex items-center gap-3">
           {!isAfterWindow && !submitted && (
-            <span style={{
-              fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 500,
-              color: '#E2737A', background: '#FCEAEC',
-              padding: '4px 10px', borderRadius: 999,
-            }}>
-              {timerDisplay}
-            </span>
+            <div className="flex items-center gap-1 px-3 py-1 bg-error-container text-on-error-container rounded-full font-label-md text-label-md border border-error/20">
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>timer</span>
+              <span>{timerDisplay}</span>
+            </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div style={{ padding: '16px 16px 120px', maxWidth: 600, margin: '0 auto' }}>
-        {loading && (
-          <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
-            Loading questions...
-          </div>
-        )}
-
-        {error && (
-          <div style={{
-            background: '#FCEAEC', border: '1px solid #E2737A30', borderRadius: 12,
-            padding: 16, marginBottom: 16, color: '#93000a', fontSize: 14,
-          }}>
-            {error}
-          </div>
-        )}
-
-        {submitted && (
-          <div style={{
-            background: '#E5FAF1', border: '1px solid #116b5130', borderRadius: 12,
-            padding: 20, marginBottom: 20, textAlign: 'center',
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#116b51' }}>
-              check_circle
-            </span>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1c1c1b', marginTop: 8 }}>
-              Exam Submitted!
-            </h3>
-            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-              Your answers have been recorded.
-            </p>
-            <button
-              onClick={() => navigate('/student/review')}
-              style={{
-                marginTop: 14, background: '#fff', color: '#116b51',
-                border: '1px solid #116b5150', borderRadius: 999,
-                padding: '10px 20px', fontFamily: 'Space Grotesk',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#116b51' }}>
-                visibility
+      <main className="pt-[72px] pb-[100px] px-4 md:px-12 flex flex-col md:flex-row gap-6 min-h-screen">
+        <div className="flex-1 flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-end">
+              <span className="font-headline-md text-headline-md text-on-surface">
+                {currentQuestion ? `Question ${currentIdx + 1} of ${questions.length}` : 'Loading...'}
               </span>
-              Review Answers
-            </button>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">{answeredCount}/{questions.length} Answered</span>
+            </div>
+            <div className="w-full h-2 bg-outline rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: questions.length ? `${((currentIdx + 1) / questions.length) * 100}%` : '0%' }} />
+            </div>
           </div>
-        )}
 
-        {submitError && (
-          <div style={{
-            background: '#FCEAEC', border: '1px solid #E2737A30', borderRadius: 12,
-            padding: 14, marginBottom: 16, color: '#93000a', fontSize: 13,
-          }}>
-            {submitError}
-          </div>
-        )}
+          {loading && (
+            <div className="text-center py-16 text-on-surface-variant">
+              <span className="material-symbols-outlined animate-spin text-primary" style={{ fontSize: 32 }}>sync</span>
+              <p className="mt-2 text-body-sm">Loading questions...</p>
+            </div>
+          )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {questions.map((q) => (
-            <QuestionCard
-              key={q.id}
-              id={q.id}
-              text={q.text}
-              option_a={q.option_a}
-              option_b={q.option_b}
-              option_c={q.option_c}
-              option_d={q.option_d}
-              image_url={q.image_url}
-              selected={answers[`q${q.id}`] || null}
-              onSelect={isReadOnly ? () => {} : (qid, label) => saveAnswer(`q${qid}`, label)}
-            />
-          ))}
+          {error && (
+            <div className="bg-error-container border border-error/20 rounded-2xl p-4 text-on-error-container text-body-sm">{error}</div>
+          )}
+
+          {submitError && (
+            <div className="bg-error-container border border-error/20 rounded-2xl p-4 text-on-error-container text-body-sm">{submitError}</div>
+          )}
+
+          {currentQuestion && !loading && (
+            <div className="bg-surface-container-lowest border border-outline rounded-2xl p-6 md:p-8 flex flex-col gap-6 custom-shadow">
+              {currentQuestion.image_url && (
+                <div className="w-full rounded-xl overflow-hidden bg-surface-container-low">
+                  <img src={currentQuestion.image_url} alt="" className="w-full max-h-48 object-contain" />
+                </div>
+              )}
+              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">{currentQuestion.text}</p>
+
+              <div className="grid grid-cols-1 gap-4">
+                {OPTION_LABELS.map(label => {
+                  const text = currentQuestion[`option_${label.toLowerCase()}`]
+                  if (!text) return null
+                  const isSelected = answers[`q${currentQuestion.id}`] === label
+                  return (
+                    <label key={label}
+                      className={`group flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all active:scale-[0.99] ${isSelected ? 'border-primary bg-primary-container/30' : 'border-outline hover:border-primary-fixed'}`}
+                      onClick={() => !isReadOnly && saveAnswer(`q${currentQuestion.id}`, label)}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-primary' : 'border-outline-variant'}`}>
+                        {isSelected && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
+                      </div>
+                      <span className={`font-body-md text-body-md flex-1 ${isSelected ? 'text-on-primary-container font-semibold' : 'text-on-surface'}`}>{text}</span>
+                      {isSelected && <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Submit Button */}
+        <aside className="w-full md:w-80 flex flex-col gap-6 h-fit sticky top-[72px]">
+          <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline">
+            <h3 className="font-label-md text-label-md text-primary uppercase font-bold tracking-wider text-xs mb-3">Question Palette</h3>
+            <div className="grid grid-cols-5 gap-2">
+              {questions.map((q, idx) => {
+                const isAnswered = !!answers[`q${q.id}`]
+                const isCurrent = idx === currentIdx
+                return (
+                  <button key={q.id} onClick={() => setCurrentIdx(idx)}
+                    className={`h-10 w-full rounded-full flex items-center justify-center font-label-md text-label-md transition-transform hover:scale-105 active:scale-95 border ${isCurrent ? 'bg-surface-container-lowest text-on-primary-container border-2 border-primary-container shadow-md relative' : isAnswered ? 'bg-tertiary-fixed text-tertiary border-tertiary/20' : 'bg-secondary-fixed text-secondary border-secondary/20'}`}>
+                    {isCurrent && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary-container rounded-full animate-pulse" />}
+                    {idx + 1}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          {!isAfterWindow && !submitted && (
+            <div className="hidden md:flex p-4 bg-surface-bright border border-primary/10 rounded-2xl items-start gap-3">
+              <span className="material-symbols-outlined text-primary">lightbulb</span>
+              <p className="text-body-sm text-on-surface-variant">
+                <strong className="text-primary">Pro Tip:</strong> Use Previous/Next buttons or click palette numbers to navigate.
+              </p>
+            </div>
+          )}
+        </aside>
+      </main>
+
       {!isAfterWindow && !submitted && questions.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#fff', borderTop: '1px solid #e5e7eb',
-          padding: '12px 16px 24px', display: 'flex', justifyContent: 'center',
-        }}>
-          <button
-            onClick={() => handleSubmit(false)}
-            disabled={submitting}
-            style={{
-              background: submitting ? '#8CA0EE' : '#465aa3',
-              color: '#fff', border: 'none', borderRadius: 999,
-              padding: '14px 48px', fontFamily: 'Space Grotesk',
-              fontSize: 15, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 16px rgba(70,90,163,0.25)',
-            }}
-          >
-            {submitting ? 'Submitting...' : 'Submit Exam'}
-          </button>
-        </div>
+        <footer className="fixed bottom-0 left-0 w-full z-50 bg-surface-container shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+          <div className="max-w-screen-2xl mx-auto flex items-center justify-between px-4 py-3">
+            <button onClick={() => setCurrentIdx(i => Math.max(0, i - 1))} disabled={currentIdx === 0}
+              className="flex items-center gap-1 px-6 py-3 bg-surface-container-highest text-primary hover:bg-primary-container/50 transition-colors rounded-full font-label-md text-label-md active:scale-95 disabled:opacity-40">
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_left</span>
+              <span>Previous</span>
+            </button>
+            {currentIdx < questions.length - 1 ? (
+              <button onClick={() => setCurrentIdx(i => Math.min(questions.length - 1, i + 1))}
+                className="flex items-center gap-1 px-6 py-3 bg-primary text-on-primary hover:opacity-90 transition-all rounded-full font-label-md text-label-md active:scale-95">
+                <span>Next</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_right</span>
+              </button>
+            ) : (
+              <button onClick={() => handleSubmit(false)} disabled={submitting}
+                className="flex items-center gap-1 px-6 py-3 bg-primary text-on-primary hover:opacity-90 transition-all rounded-full font-label-md text-label-md active:scale-95 disabled:opacity-60">
+                <span>{submitting ? 'Submitting...' : 'Submit'}</span>
+                {!submitting && <span className="material-symbols-outlined" style={{ fontSize: 20 }}>send</span>}
+              </button>
+            )}
+          </div>
+        </footer>
       )}
     </div>
-  );
+  )
 }

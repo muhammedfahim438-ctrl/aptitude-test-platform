@@ -321,7 +321,7 @@
                 { "key": "top", "value": "10", "description": "Number of top students to return" }
               ]
             },
-            "description": "Returns daily or weekly rankings. Daily: from DailyScore. Weekly: from WeeklyLeaderboard."
+            "description": "Returns daily, weekly, or monthly rankings. Daily: from DailyScore. Weekly: from WeeklyLeaderboard. Monthly: from MonthlyLeaderboard."
           }
         },
         {
@@ -451,6 +451,63 @@
               "path": ["api", "internal", "compute-weekly-leaderboard", ""]
             },
             "description": "Cron-triggered Sunday 8:00 PM IST. Computes SUM(score) from DailyScore for current week. Writes to WeeklyLeaderboard with tie-breaking ranks."
+          }
+        },
+        {
+          "name": "Aggregate Scores",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "date", "value": "{{exam_date}}", "description": "Optional. Defaults to yesterday if omitted." }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/internal/aggregate-scores/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "aggregate-scores", ""]
+            },
+            "description": "HTTP trigger wrapping aggregate_scores management command. Grades submissions, creates DailyScore rows, exports CSV. Protected by X-Cron-Secret."
+          }
+        },
+        {
+          "name": "Flush Monthly Leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/internal/flush-monthly-leaderboard/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "flush-monthly-leaderboard", ""]
+            },
+            "description": "Run before monthly recompute. Deletes all MonthlyLeaderboard rows."
+          }
+        },
+        {
+          "name": "Compute Monthly Leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Cron-Secret", "value": "{{cron_secret}}" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "month", "value": "", "description": "Optional YYYY-MM format. Defaults to previous month." }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/internal/compute-monthly-leaderboard/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "internal", "compute-monthly-leaderboard", ""]
+            },
+            "description": "Cron-triggered 1st of month. Computes SUM(score) from DailyScore for previous month. Writes to MonthlyLeaderboard with tie-breaking ranks."
           }
         }
       ]

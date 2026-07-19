@@ -93,7 +93,7 @@ aptitude-test-platform/
 ├── README.md                          (consolidated project docs)
 ├── docs/
 │   ├── PROJECT_STATUS.md              (per-member implementation status vs spec)
-│   └── aptitude_test_platform.postman_collection.json  (all 23 endpoints)
+│   └── aptitude_test_platform.postman_collection.json  (all 26 endpoints)
 │
 ├── backend/
 │   ├── manage.py
@@ -302,6 +302,7 @@ aptitude-test-platform/
 email          = EmailField(unique=True)          # Used as USERNAME_FIELD
 full_name      = CharField(max_length=150)
 roll_number    = CharField(max_length=20, unique=True, null=True)
+department     = CharField(max_length=150, blank=True, default='')
 is_student     = BooleanField(default=False)
 is_teacher     = BooleanField(default=False)
 is_active      = BooleanField(default=True)
@@ -365,6 +366,15 @@ rank           = PositiveSmallIntegerField
 # Indexed: (week_start, rank)
 ```
 
+### `pipeline.MonthlyLeaderboard`
+```python
+student        = ForeignKey(CustomUser)
+month_start    = DateField
+total_score    = PositiveIntegerField
+rank           = PositiveSmallIntegerField
+# Indexed: (month_start, rank)
+```
+
 ### `pipeline.ScheduledFileDeletion`
 ```python
 file_path      = CharField(max_length=500)
@@ -421,11 +431,14 @@ All routes are defined in `backend/core/urls.py`.
 |---|---|---|
 | POST | `/api/internal/warm-cache/` | Pre-load questions into Redis |
 | POST | `/api/internal/process-deletions/` | Delete overdue CSV files |
-| POST | `/api/internal/cleanup-day/` | Clean up student data after review window |
+| POST | `/api/internal/aggregate-scores/` | Grade submissions + generate CSV |
+| POST | `/api/internal/cleanup-day/` | Clean up student data after review window (preserves DailyScore) |
 | POST | `/api/internal/flush-weekly-leaderboard/` | Clear weekly leaderboard |
 | POST | `/api/internal/compute-weekly-leaderboard/` | Recompute weekly leaderboard |
+| POST | `/api/internal/flush-monthly-leaderboard/` | Clear monthly leaderboard |
+| POST | `/api/internal/compute-monthly-leaderboard/` | Recompute monthly leaderboard |
 
-**Total: 23 endpoints**
+**Total: 26 endpoints**
 
 ### Response Formats
 
@@ -569,10 +582,19 @@ python manage.py warm_question_cache --date=2025-07-15
 
 # Clean up student data after review window closes
 python manage.py cleanup_day --date=2025-07-15
+
+# Compute monthly leaderboard from DailyScore records
+python manage.py compute_monthly_leaderboard
+
+# Clear monthly leaderboard (run before recompute)
+python manage.py flush_monthly_leaderboard
 ```
 
 ### Signals
 - `pre_save` on `Question`: when new questions are uploaded for a previously unseen exam date, all stale CSVs and `DailyLeaderboard` records for that date are purged.
+
+### Score Aggregation (via HTTP)
+- `POST /api/internal/aggregate-scores/` — HTTP trigger that wraps the `aggregate_scores` management command. Accepts optional `date` POST parameter. Protected by `X-Cron-Secret` header.
 
 ---
 
@@ -782,7 +804,7 @@ main ← development ← feature/* branches
 10. **All API routes are in `core/urls.py`** — app-level `urls.py` files are empty by design
 11. **Database is PostgreSQL in production** — never hardcode SQLite for prod
 12. **`ExamPage.jsx` uses real API** — the old temp preview mode has been removed
-13. **Backend serves 23 API endpoints** — 5 public, 6 student, 7 admin, 5 internal cron
+13. **Backend serves 26 API endpoints** — 5 public, 6 student, 7 admin, 8 internal cron
 
 ---
 

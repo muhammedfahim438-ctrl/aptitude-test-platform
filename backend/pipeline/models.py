@@ -66,6 +66,25 @@ class WeeklyLeaderboard(models.Model):
         return f"Week of {self.week_start} | rank={self.rank} | {self.student_id}"
 
 
+class MonthlyLeaderboard(models.Model):
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='monthly_leaderboard_entries',
+    )
+    month_start = models.DateField()
+    total_score = models.PositiveIntegerField()
+    rank = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['month_start', 'rank'])]
+        ordering = ['month_start', 'rank']
+
+    def __str__(self):
+        return f"Month of {self.month_start} | rank={self.rank} | {self.student_id}"
+
+
 class ScheduledFileDeletion(models.Model):
     file_path = models.CharField(max_length=500)
     delete_after = models.DateTimeField()

@@ -3,214 +3,238 @@ import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../../api/client'
 import BottomNav from '../../components/BottomNav'
 
-const C = {
-  primary: '#465aa3',
-  primaryContainer: '#EAEFFD',
-  onPrimaryContainer: '#1e347b',
-  secondary: '#8a5108',
-  secondaryContainer: '#FFEEDC',
-  tertiary: '#116b51',
-  tertiaryContainer: '#E5FAF1',
-  onTertiaryContainer: '#1F8A5F',
-  surface: '#FBFBFF',
-  surfaceContainer: '#FFFFFF',
-  surfaceContainerLow: '#f5f3fa',
-  surfaceContainerHigh: '#e9e7ee',
-  outline: '#E6E9F7',
-  outlineVariant: '#c5c5d2',
-  onSurface: '#1b1b20',
-  onSurfaceVariant: '#444651',
-  background: '#f9f9f7',
-  orange: '#E8621A',
-  orangeContainer: '#FFF0E8',
-}
-
-const Icon = ({ name, size = 24, fill = false, color, style = {} }) => (
-  <span
-    className={`material-symbols-outlined${fill ? ' fill-icon' : ''}`}
-    style={{ fontSize: size, color, lineHeight: 1, ...style }}
-  >
-    {name}
-  </span>
-)
-
-const RANK_STYLES = {
-  1: { bg: '#FFD700', text: '#7C6200', glow: 'rgba(255,215,0,0.3)' },
-  2: { bg: '#C0C0C0', text: '#555', glow: 'rgba(192,192,192,0.3)' },
-  3: { bg: '#CD7F32', text: '#5C3A1E', glow: 'rgba(205,127,50,0.3)' },
-}
-
-const PASTEL_COLORS = [
-  '#EAEFFD', '#E5FAF1', '#FFEEDC', '#FCEAEC', '#F3E8FF',
-  '#E0F2FE', '#FEF3C7', '#D1FAE5', '#EDE9FE', '#FEE2E2',
-]
-
-function getAvatarColor(name) {
-  let hash = 0
-  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
-}
-
-function getInitials(name) {
-  if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
-  return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name.substring(0, 2).toUpperCase()
-}
-
 export default function RankPage() {
   const navigate = useNavigate()
-  const [rankings, setRankings] = useState([])
-  const [period, setPeriod] = useState('weekly')
-  const [stats, setStats] = useState(null)
+  const [activeTab, setActiveTab] = useState('daily')
+  const [dailyRanks, setDailyRanks] = useState([])
+  const [weeklyRanks, setWeeklyRanks] = useState([])
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchRankings = async () => {
       setLoading(true)
       try {
-        const [rankRes, statsRes] = await Promise.all([
-          adminAPI.getRankings(20, period),
-          adminAPI.getDashboardStats(),
+        const [dailyRes, weeklyRes] = await Promise.all([
+          adminAPI.getRankings('daily', 50, selectedDate),
+          adminAPI.getRankings('weekly', 50),
         ])
-        setRankings(rankRes.data.rankings || rankRes.data.results || rankRes.data || [])
-        setStats(statsRes.data)
+        const dailyItems = dailyRes.data.results || dailyRes.data || []
+        const weeklyItems = weeklyRes.data.results || weeklyRes.data || []
+        setDailyRanks(dailyItems)
+        setWeeklyRanks(weeklyItems)
       } catch {
         // silent
       } finally {
         setLoading(false)
       }
     }
-    fetchData()
-  }, [period])
+    fetchRankings()
+  }, [selectedDate])
 
-  const maxScore = Math.max(...rankings.map((r) => r.score || r.total_score || 0), 1)
+  const getRankBadge = (rank) => {
+    if (rank === 1) return { icon: 'emoji_events', color: 'text-admin-primary', bg: 'bg-admin-primary-container' }
+    if (rank === 2) return { icon: 'emoji_events', color: 'text-admin-on-surface-variant', bg: 'bg-admin-surface-container' }
+    if (rank === 3) return { icon: 'emoji_events', color: 'text-admin-primary', bg: 'bg-admin-primary-container' }
+    return { icon: null, color: '', bg: '' }
+  }
+
+  const filteredWeekly = weeklyRanks.filter(
+    (r) => (r.student_name || r.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+           (r.roll_number || '').toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const tabs = [
+    { id: 'daily', label: 'Daily Rankings', icon: 'calendar_today' },
+    { id: 'weekly', label: 'Weekly Rankings', icon: 'date_range' },
+  ]
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="flex flex-col min-h-screen bg-admin-surface">
 
-      {/* Header */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: C.surfaceContainer, borderBottom: `1px solid ${C.outline}`, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 1px 4px rgba(70,90,163,0.08)' }}>
-        <button onClick={() => navigate('/admin/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
-          <Icon name="arrow_back" size={22} color={C.onSurface} />
-        </button>
-        <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, color: C.onSurface, flex: 1 }}>Rankings</h1>
+      <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+            <span className="material-symbols-outlined text-admin-primary">menu</span>
+          </button>
+          <h1 className="text-headline-sm font-headline-md font-bold text-admin-on-surface">Admin Command</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="p-2 rounded-full hover:bg-admin-surface-container-high transition-colors">
+            <span className="material-symbols-outlined text-admin-on-surface-variant">notifications</span>
+          </button>
+          <div className="w-8 h-8 rounded-full bg-admin-primary-container flex items-center justify-center text-admin-on-primary-container font-label-md">AD</div>
+        </div>
       </header>
 
-      <div style={{ height: 56 }} />
+      <main className="flex-1 max-w-5xl mx-auto px-5 pt-6 pb-32 space-y-6 w-full">
 
-      <main style={{ flex: 1, padding: '16px 16px 110px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <section className="space-y-4">
+          <div className="flex justify-between items-end px-2">
+            <div>
+              <h2 className="text-headline-md font-headline-md text-admin-on-surface">Rankings</h2>
+              <p className="text-label-md font-label-md text-admin-on-surface-variant">View student rankings by period</p>
+            </div>
+          </div>
+        </section>
 
-        {/* Period Toggle */}
-        <div style={{ display: 'flex', background: C.surfaceContainerLow, borderRadius: 10, padding: 4, border: `1px solid ${C.outline}` }}>
-          {['daily', 'weekly'].map((p) => (
+        <div className="bg-admin-surface-container-lowest rounded-xl p-1 border border-admin-outline-variant flex gap-1">
+          {tabs.map((tab) => (
             <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              style={{
-                flex: 1, padding: '8px 0', border: 'none', borderRadius: 8,
-                fontFamily: 'Space Grotesk', fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.2s',
-                background: period === p ? C.primary : 'transparent',
-                color: period === p ? '#fff' : C.onSurfaceVariant,
-              }}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2.5 rounded-lg flex items-center justify-center gap-2 text-label-md font-label-md transition-all ${activeTab === tab.id ? 'bg-admin-primary text-admin-on-primary shadow-sm' : 'text-admin-on-surface-variant hover:bg-admin-surface-container'}`}
             >
-              {p === 'daily' ? 'Daily' : 'Weekly'}
+              <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+              {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Quick stats */}
-        {stats && (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1, background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icon name="groups" size={20} color={C.primary} />
-              <div>
-                <p style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 700, color: C.onSurface }}>{stats.total_students ?? 0}</p>
-                <p style={{ fontFamily: 'Inter', fontSize: 10, color: C.onSurfaceVariant }}>Students</p>
+        {activeTab === 'daily' ? (
+          <div className="space-y-4">
+            <div className="bg-admin-surface-container-lowest rounded-xl p-5 border border-admin-outline-variant shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-body-lg font-headline-sm text-admin-on-surface font-bold">Daily Rankings</h3>
+                  <p className="text-label-sm font-label-sm text-admin-on-surface-variant">Leaderboard for a single day</p>
+                </div>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-admin-surface-container-low border border-admin-outline-variant rounded-lg px-3 py-2 text-body-md text-admin-on-surface outline-none focus:border-admin-primary"
+                />
               </div>
             </div>
-            <div style={{ flex: 1, background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icon name="quiz" size={20} color={C.tertiary} />
-              <div>
-                <p style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 700, color: C.onSurface }}>{stats.tests_completed_today ?? 0}</p>
-                <p style={{ fontFamily: 'Inter', fontSize: 10, color: C.onSurfaceVariant }}>Tests Today</p>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Rankings */}
-        {loading ? (
-          [1, 2, 3, 4, 5].map((i) => (
-            <div key={i} style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 14, padding: 14, display: 'flex', alignItems: 'center', gap: 12, animation: 'pulse 2s ease infinite' }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.surfaceContainerLow }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ width: '50%', height: 12, borderRadius: 4, background: C.surfaceContainerLow, marginBottom: 6 }} />
-                <div style={{ width: '30%', height: 8, borderRadius: 4, background: C.surfaceContainerLow }} />
+            <div className="flex items-center justify-between px-2">
+              <p className="text-body-sm text-admin-on-surface-variant font-label-md">Top scorers by rank and points</p>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-admin-primary text-[18px]">download</span>
+                <span className="text-label-md font-label-md text-admin-primary">Export</span>
               </div>
             </div>
-          ))
-        ) : rankings.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Icon name="leaderboard" size={48} color={C.outlineVariant} style={{ display: 'block', marginBottom: 12 }} />
-            <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.onSurfaceVariant }}>No rankings available yet</p>
+
+            <div className="space-y-3">
+              {loading ? (
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="bg-admin-surface-container-lowest rounded-xl p-4 border border-admin-outline-variant animate-pulse flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-admin-surface-container" />
+                    <div className="flex-1">
+                      <div className="w-32 h-4 rounded bg-admin-surface-container mb-2" />
+                      <div className="w-20 h-3 rounded bg-admin-surface-container" />
+                    </div>
+                  </div>
+                ))
+              ) : dailyRanks.length === 0 ? (
+                <div className="text-center py-12 bg-admin-surface-container-lowest rounded-xl border border-admin-outline-variant">
+                  <span className="material-symbols-outlined text-[48px] text-admin-outline-variant block mb-3">emoji_events</span>
+                  <p className="text-body-md text-admin-on-surface-variant font-label-md">No rankings for this date</p>
+                </div>
+              ) : (
+                dailyRanks.map((rank) => {
+                  const badge = getRankBadge(rank.rank)
+                  return (
+                    <div key={rank.id || rank.rank} className="bg-admin-surface-container-lowest rounded-xl p-4 border border-admin-outline-variant shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-title-md font-headline-md font-bold ${badge.bg} ${badge.color}`}>
+                          {badge.icon ? (
+                            <span className="material-symbols-outlined">{badge.icon}</span>
+                          ) : (
+                            <span>{rank.rank}</span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-body-lg font-headline-sm text-admin-on-surface">{rank.student_name || rank.full_name || 'Unknown'}</h4>
+                          <p className="text-label-sm font-label-sm text-admin-on-surface-variant flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]">badge</span>
+                            {rank.roll_number || 'N/A'} • {rank.score || 0} pts
+                          </p>
+                        </div>
+                      </div>
+                      {badge.icon && (
+                        <span className={`material-symbols-outlined text-[28px] ${badge.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {badge.icon}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
         ) : (
-          rankings.map((entry, idx) => {
-            const rank = entry.rank || idx + 1
-            const score = entry.score || entry.total_score || 0
-            const name = entry.student_name || entry.full_name || entry.student?.full_name || 'Unknown'
-            const roll = entry.roll_number || entry.student?.roll_number || ''
-            const avatarBg = getAvatarColor(name)
-            const initials = getInitials(name)
-            const rankStyle = RANK_STYLES[rank] || null
-            const barWidth = (score / maxScore) * 100
+          <div className="space-y-4">
+            <div className="bg-admin-surface-container-lowest rounded-xl p-5 border border-admin-outline-variant shadow-sm">
+              <h3 className="text-body-lg font-headline-sm text-admin-on-surface font-bold">Weekly Rankings</h3>
+              <p className="text-label-sm font-label-sm text-admin-on-surface-variant">Cumulative weekly leaderboard</p>
+            </div>
 
-            return (
-              <div key={entry.id || idx} style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: rankStyle ? `0 0 12px ${rankStyle.glow}` : 'none' }}>
-                {/* Rank badge */}
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8,
-                  background: rankStyle ? rankStyle.bg : C.surfaceContainerLow,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <span style={{
-                    fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 700,
-                    color: rankStyle ? rankStyle.text : C.onSurfaceVariant,
-                  }}>#{rank}</span>
-                </div>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-admin-on-surface-variant text-[20px]">search</span>
+              <input
+                type="text"
+                placeholder="Search by name or roll number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-admin-surface-container-low border border-admin-outline-variant rounded-lg focus:border-admin-primary focus:ring-0 text-body-md font-body-md text-admin-on-surface placeholder:text-admin-on-surface-variant/50 outline-none"
+              />
+            </div>
 
-                {/* Avatar */}
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                  <span style={{ fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 700, color: C.onSurface }}>{initials}</span>
-                </div>
-
-                {/* Info + bar */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: 600, color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
-                      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: C.onSurfaceVariant }}>{roll}</p>
+            <div className="space-y-3">
+              {loading ? (
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="bg-admin-surface-container-lowest rounded-xl p-4 border border-admin-outline-variant animate-pulse flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-admin-surface-container" />
+                    <div className="flex-1">
+                      <div className="w-32 h-4 rounded bg-admin-surface-container mb-2" />
+                      <div className="w-20 h-3 rounded bg-admin-surface-container" />
                     </div>
-                    <span style={{ fontFamily: 'Space Grotesk', fontSize: 15, fontWeight: 700, color: C.primary, flexShrink: 0 }}>{score}</span>
                   </div>
-                  <div style={{ height: 6, borderRadius: 3, background: C.surfaceContainerLow, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${barWidth}%`, borderRadius: 3, background: rankStyle ? rankStyle.bg : C.primary, transition: 'width 0.5s ease' }} />
-                  </div>
+                ))
+              ) : filteredWeekly.length === 0 ? (
+                <div className="text-center py-12 bg-admin-surface-container-lowest rounded-xl border border-admin-outline-variant">
+                  <span className="material-symbols-outlined text-[48px] text-admin-outline-variant block mb-3">emoji_events</span>
+                  <p className="text-body-md text-admin-on-surface-variant font-label-md">No weekly rankings yet</p>
                 </div>
-              </div>
-            )
-          })
+              ) : (
+                filteredWeekly.map((rank) => {
+                  const badge = getRankBadge(rank.rank)
+                  return (
+                    <div key={rank.id || rank.rank} className="bg-admin-surface-container-lowest rounded-xl p-4 border border-admin-outline-variant shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-title-md font-headline-md font-bold ${badge.bg} ${badge.color}`}>
+                          {badge.icon ? (
+                            <span className="material-symbols-outlined">{badge.icon}</span>
+                          ) : (
+                            <span>{rank.rank}</span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-body-lg font-headline-sm text-admin-on-surface">{rank.student_name || rank.full_name || 'Unknown'}</h4>
+                          <p className="text-label-sm font-label-sm text-admin-on-surface-variant flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]">badge</span>
+                            {rank.roll_number || 'N/A'} • {rank.total_score || 0} pts
+                          </p>
+                        </div>
+                      </div>
+                      {badge.icon && (
+                        <span className={`material-symbols-outlined text-[28px] ${badge.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {badge.icon}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
         )}
       </main>
 
-      <BottomNav active="rank" />
-
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-      `}</style>
+      <BottomNav active="leaderboard" />
     </div>
   )
 }

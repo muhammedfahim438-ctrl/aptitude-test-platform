@@ -17,7 +17,7 @@ from rest_framework import status
 
 from core.permissions import IsTeacherUser, IsStudentUser
 from exams.models import AnswerKey, Question, StudentSubmission
-from .models import ScheduledFileDeletion, ReportDownloadLog, WeeklyLeaderboard, DailyScore, DailyLeaderboard
+from .models import ScheduledFileDeletion, ReportDownloadLog, WeeklyLeaderboard, MonthlyLeaderboard, DailyScore, DailyLeaderboard
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -101,6 +101,47 @@ def compute_weekly_leaderboard_view(request):
 
     call_command('compute_weekly_leaderboard')
     return JsonResponse({'status': 'computed'})
+
+
+@csrf_exempt
+def compute_monthly_leaderboard_view(request):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    secret = request.headers.get('X-Cron-Secret', '')
+    if secret != settings.CRON_SECRET_KEY:
+        return HttpResponse(status=403)
+
+    call_command('compute_monthly_leaderboard')
+    return JsonResponse({'status': 'computed'})
+
+
+@csrf_exempt
+def flush_monthly_leaderboard_view(request):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    secret = request.headers.get('X-Cron-Secret', '')
+    if secret != settings.CRON_SECRET_KEY:
+        return HttpResponse(status=403)
+
+    deleted_count, _ = MonthlyLeaderboard.objects.all().delete()
+    return JsonResponse({'status': 'flushed', 'deleted': deleted_count})
+
+
+@csrf_exempt
+def aggregate_scores_view(request):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    secret = request.headers.get('X-Cron-Secret', '')
+    if secret != settings.CRON_SECRET_KEY:
+        return HttpResponse(status=403)
+
+    target_date = request.POST.get('date')
+    if target_date:
+        call_command('aggregate_scores', date=target_date)
+    else:
+        call_command('aggregate_scores')
+
+    return JsonResponse({'status': 'aggregated', 'date': target_date or 'yesterday'})
 
 
 @csrf_exempt

@@ -3,24 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../../api/client'
 import BottomNav from '../../components/BottomNav'
 
-const C = {
-  primary: '#465aa3',
-  primaryContainer: '#EAEFFD',
-  onPrimaryContainer: '#1e347b',
-  surface: '#FBFBFF',
-  surfaceContainer: '#FFFFFF',
-  surfaceContainerLow: '#f5f3fa',
-  surfaceContainerHigh: '#e9e7ee',
-  outline: '#E6E9F7',
-  outlineVariant: '#c5c5d2',
-  onSurface: '#1b1b20',
-  onSurfaceVariant: '#444651',
-  error: '#E2737A',
-  errorContainer: '#FCEAEC',
-  onErrorContainer: '#93000a',
-  background: '#f9f9f7',
-}
-
 export default function AdminQuestions() {
   const navigate = useNavigate()
   const [modules, setModules] = useState({})
@@ -48,9 +30,7 @@ export default function AdminQuestions() {
   }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchQuestions(search)
-    }, 500)
+    const timer = setTimeout(() => fetchQuestions(search), 500)
     return () => clearTimeout(timer)
   }, [search, fetchQuestions])
 
@@ -75,111 +55,126 @@ export default function AdminQuestions() {
   const dates = Object.keys(modules).sort((a, b) => b.localeCompare(a))
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.background, maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="flex flex-col min-h-screen bg-background">
 
-      {/* Header */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: C.surfaceContainer, borderBottom: `1px solid ${C.outline}`, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 1px 4px rgba(70,90,163,0.08)' }}>
-        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
-          <span className="ri ri-menu-2-line" style={{ fontSize: 22, color: C.onSurface }} />
-        </button>
-        <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, color: C.onSurface, flex: 1 }}>Question Library</h1>
-        <button onClick={() => navigate('/admin/questions/upload')} style={{ background: C.primary, border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: '#fff', fontFamily: 'Space Grotesk', fontSize: 12, fontWeight: 600 }}>
-          <span className="ri ri-add-line" style={{ fontSize: 16 }} />
-          Upload
-        </button>
+      <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+            <span className="material-symbols-outlined text-admin-primary">menu</span>
+          </button>
+          <h1 className="text-headline-sm font-headline-md font-bold text-admin-on-surface">Admin Command</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="p-2 rounded-full hover:bg-admin-surface-container-high transition-colors">
+            <span className="material-symbols-outlined text-admin-on-surface-variant">notifications</span>
+          </button>
+          <div className="w-8 h-8 rounded-full bg-admin-primary-container flex items-center justify-center text-admin-on-primary-container font-label-md">AD</div>
+        </div>
       </header>
 
-      <div style={{ height: 56 }} />
+      <main className="flex-1 max-w-5xl mx-auto px-5 pt-6 pb-32 space-y-8 w-full">
 
-      {/* Search */}
-      <div style={{ padding: '12px 16px', position: 'sticky', top: 56, zIndex: 40, background: C.background }}>
-        <div style={{ background: C.surfaceContainer, borderRadius: 10, border: `1.5px solid ${C.outline}`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="ri ri-search-line" style={{ fontSize: 18, color: C.onSurfaceVariant }} />
+        <section className="space-y-4">
+          <div className="flex justify-between items-end px-2">
+            <div>
+              <h2 className="text-headline-md font-headline-md text-admin-on-surface">Question Bank Editor</h2>
+              <p className="text-label-md font-label-md text-admin-on-surface-variant">Manage and refine aptitude test items</p>
+            </div>
+            <button onClick={() => navigate('/admin/questions/upload')} className="bg-admin-secondary text-admin-on-secondary px-6 py-3 rounded-full flex items-center gap-2 font-headline-sm hover:opacity-90 transition-opacity shadow-sm">
+              <span className="material-symbols-outlined">add</span>
+              Add Row
+            </button>
+          </div>
+        </section>
+
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-admin-on-surface-variant text-[20px]">search</span>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by date or question..."
-            style={{ background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Inter', fontSize: 14, color: C.onSurface, width: '100%' }}
+            placeholder="Search modules..."
+            className="w-full pl-10 pr-4 py-2.5 bg-admin-surface-container-low border border-admin-outline-variant rounded-lg focus:border-admin-primary focus:ring-0 text-body-md font-body-md text-admin-on-surface placeholder:text-admin-on-surface-variant/50 outline-none"
           />
-          {search && (
-            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
-              <span className="ri ri-close-circle-fill" style={{ fontSize: 18, color: C.onSurfaceVariant }} />
-            </button>
-          )}
         </div>
-      </div>
 
-      <main style={{ flex: 1, padding: '0 16px 110px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {loading ? (
-          [1, 2, 3].map((i) => (
-            <div key={i} style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 14, padding: 16 }}>
-              <div style={{ width: '40%', height: 14, borderRadius: 4, background: C.surfaceContainerLow, marginBottom: 10, animation: 'pulse 2s ease infinite' }} />
-              <div style={{ width: '70%', height: 10, borderRadius: 4, background: C.surfaceContainerLow, animation: 'pulse 2s ease infinite' }} />
+        <div className="space-y-4">
+          {loading ? (
+            [1, 2, 3].map((i) => (
+              <div key={i} className="bg-admin-surface-container-lowest rounded-lg p-4 flex items-center justify-between shadow-sm border border-admin-outline-variant animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-admin-surface-container" />
+                  <div>
+                    <div className="w-32 h-4 rounded bg-admin-surface-container mb-2" />
+                    <div className="w-20 h-3 rounded bg-admin-surface-container" />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : dates.length === 0 ? (
+            <div className="text-center py-12">
+              <span className="material-symbols-outlined text-[48px] text-admin-outline-variant block mb-3">inbox</span>
+              <p className="text-body-md text-admin-on-surface-variant">No questions found</p>
             </div>
-          ))
-        ) : dates.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <span className="ri ri-inbox-2-line" style={{ fontSize: 48, color: C.outlineVariant, display: 'block', marginBottom: 12 }} />
-            <p style={{ fontFamily: 'Inter', fontSize: 14, color: C.onSurfaceVariant }}>No questions found</p>
-          </div>
-        ) : (
-          dates.map((date) => {
-            const questions = modules[date]
-            const isConfirming = confirmDelete === date
-            return (
-              <div key={date} style={{ background: C.surfaceContainer, border: `1px solid ${C.outline}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(70,90,163,0.06)' }}>
-                <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          ) : (
+            dates.map((date) => {
+              const questions = modules[date]
+              const isConfirming = confirmDelete === date
+              return (
+                <div key={date} className="group bg-admin-surface-container-lowest rounded-lg p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all border border-admin-outline-variant hover:border-admin-secondary/30">
                   <button
                     onClick={() => navigate(`/admin/questions/${date}`)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: 0, textAlign: 'left', flex: 1 }}
+                    className="flex items-center gap-4 flex-1 text-left"
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: C.primaryContainer, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span className="ri ri-calendar-event-line" style={{ fontSize: 20, color: C.primary }} />
+                    <div className="w-12 h-12 bg-admin-primary-container rounded-xl flex items-center justify-center text-admin-primary">
+                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
                     </div>
                     <div>
-                      <p style={{ fontFamily: 'Space Grotesk', fontSize: 15, fontWeight: 600, color: C.onSurface }}>{date}</p>
-                      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: C.onSurfaceVariant }}>{questions.length} question{questions.length !== 1 ? 's' : ''}</p>
+                      <h3 className="text-body-lg font-headline-sm text-admin-on-surface">{date}</h3>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-label-sm font-label-sm text-admin-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">group</span>
+                          {questions.length} question{questions.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
                   </button>
 
-                  {isConfirming ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="flex items-center gap-2">
+                    {isConfirming ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteDate(date)}
+                          disabled={deleting === date}
+                          className="px-3 py-1.5 bg-admin-error text-white rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity"
+                        >
+                          {deleting === date ? '...' : 'Confirm'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="px-3 py-1.5 bg-admin-surface-container-low border border-admin-outline-variant rounded-lg font-label-md text-admin-on-surface-variant hover:bg-admin-surface-container transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => handleDeleteDate(date)}
-                        disabled={deleting === date}
-                        style={{ background: C.error, border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#fff', fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500 }}
+                        onClick={() => setConfirmDelete(date)}
+                        className="p-2 flex items-center gap-1 text-admin-error hover:bg-admin-error/10 rounded-lg transition-colors"
                       >
-                        {deleting === date ? '...' : 'Confirm'}
+                        <span className="material-symbols-outlined">delete</span>
+                        <span className="hidden md:inline font-label-md text-label-md">Delete</span>
                       </button>
-                      <button
-                        onClick={() => setConfirmDelete(null)}
-                        style={{ background: C.surfaceContainerLow, border: `1px solid ${C.outline}`, borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 11, color: C.onSurfaceVariant }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDelete(date)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex' }}
-                    >
-                      <span className="ri ri-delete-bin-line" style={{ fontSize: 20, color: C.error }} />
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )
-          })
-        )}
+              )
+            })
+          )}
+        </div>
       </main>
 
       <BottomNav active="library" />
-
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-      `}</style>
     </div>
   )
 }

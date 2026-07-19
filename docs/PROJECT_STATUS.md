@@ -10,7 +10,7 @@
 
 | Category | Status |
 |----------|--------|
-| **Backend API** | 100% complete — 23 endpoints (5 public + 6 student + 7 admin + 5 internal cron) |
+| **Backend API** | 100% complete — 26 endpoints (5 public + 6 student + 7 admin + 8 internal cron) |
 | **Backend Pipeline** | 100% complete — aggregation, CSV lifecycle, signals, all management commands |
 | **Backend Tests** | 47 tests passing (accounts: 21, exams: 6, pipeline: 19 + 1 integration) |
 | **Backend Hardening** | 100% complete — whitenoise, conn_max_age=600, HSTS, compressed static files |
@@ -130,14 +130,12 @@
 | Acceptance Criterion | Status | Location |
 |----------------------|--------|----------|
 | `CustomUser` extends `AbstractBaseUser` + `PermissionsMixin` | ✅ Done | `accounts/models.py` |
-| Fields: email, full_name, roll_number, is_student, is_teacher, is_active, is_staff | ✅ Done | `accounts/models.py` |
-| `CustomUserManager` with `create_user()` / `create_superuser()` | ✅ Done | `accounts/models.py` (manager logic inlined) |
+| Fields: email, full_name, roll_number, department, is_student, is_teacher, is_active, is_staff | ✅ Done | `accounts/models.py` |
+| `CustomUserManager` with `create_user()` / `create_superuser()` | ✅ Done | `accounts/models.py` (manager logic inlined, managers.py deleted) |
 | `AUTH_USER_MODEL = 'accounts.CustomUser'` | ✅ Done | `core/settings/base.py` |
 | `IsStudentUser` and `IsTeacherUser` permission classes | ✅ Done | `core/permissions.py` |
 
-**⚠️ Deviation:** `managers.py` is an empty stub — manager logic lives in `accounts/models.py` instead.
-
-**Verdict: 100% COMPLETE (minor structural deviation)**
+**Verdict: 100% COMPLETE**
 
 ---
 
@@ -423,7 +421,7 @@
 | `src/pages/student/StudentDashboard.jsx` | ✅ | 5-state exam card + stats |
 | `src/pages/student/ExamPage.jsx` | ✅ | Real API exam interface |
 | `src/pages/student/StudentResult.jsx` | ✅ | Post-submit confirmation + score |
-| `src/pages/student/LeaderboardPage.jsx` | ⚠️ | Uses mock data (not wired to API) |
+| `src/pages/student/LeaderboardPage.jsx` | ✅ | Connected to real API |
 | `src/pages/student/AnswerReview.jsx` | ✅ | Answer review with score breakdown |
 | `src/pages/admin/AdminLogin.jsx` | ✅ | Teacher login |
 | `src/pages/admin/AdminDashboard.jsx` | ✅ | Stats dashboard |
@@ -451,11 +449,7 @@
 
 | # | Issue | Location | Owner |
 |---|-------|----------|-------|
-| 1 | `LeaderboardPage.jsx` uses mock data — not connected to API | `pages/student/LeaderboardPage.jsx` | VIJAY |
-| 2 | `Login.jsx` makes unnecessary `authAPI.login(email, email)` call before student-signin | `pages/Login.jsx` | VIJAY |
-| 3 | `Register.jsx` makes unnecessary `authAPI.login()` call before register | `pages/student/Register.jsx` | VIJAY |
-| 4 | Mixed icon system: Remix (`ri-*`) in admin pages, Material Symbols elsewhere | Multiple admin pages | VIJAY |
-| 5 | `cleanup_day` command deletes `DailyScore` — should preserve for historical analytics | `pipeline/management/commands/cleanup_day.py:36` | FAHIM |
+| — | *(all critical/high bugs fixed)* | — | — |
 
 ### Medium (cleanup)
 
@@ -507,7 +501,7 @@
 | POST | `/api/tests/submit/` | ✅ | ✅ (ExamPage) | JWT + Student |
 | GET | `/api/student/dashboard/` | ✅ | ✅ (StudentDashboard) | JWT + Student |
 | GET | `/api/student/review/?date=` | ✅ | ✅ (AnswerReview) | JWT + Student |
-| GET | `/api/student/leaderboard/?top=` | ✅ | ⚠️ (mock data) | JWT + Student |
+| GET | `/api/student/leaderboard/?top=` | ✅ | ✅ (connected to API) | JWT + Student |
 | POST | `/api/admin/upload-questions/` | ✅ | ✅ (TeacherUpload) | JWT + Teacher |
 | GET | `/api/admin/questions/?date=` | ✅ | ✅ (AdminQuestions) | JWT + Teacher |
 | DELETE | `/api/admin/questions/<id>/` | ✅ | ✅ (AdminQuestionDateDetail) | JWT + Teacher |
@@ -520,8 +514,11 @@
 | POST | `/api/internal/cleanup-day/` | ✅ | — | Cron Secret |
 | POST | `/api/internal/flush-weekly-leaderboard/` | ✅ | — | Cron Secret |
 | POST | `/api/internal/compute-weekly-leaderboard/` | ✅ | — | Cron Secret |
+| POST | `/api/internal/aggregate-scores/` | ✅ | — | Cron Secret |
+| POST | `/api/internal/flush-monthly-leaderboard/` | ✅ | — | Cron Secret |
+| POST | `/api/internal/compute-monthly-leaderboard/` | ✅ | — | Cron Secret |
 
-**Total: 23 endpoints** (5 public + 6 student + 7 admin + 5 internal cron)
+**Total: 26 endpoints** (5 public + 6 student + 7 admin + 8 internal cron)
 
 ---
 
