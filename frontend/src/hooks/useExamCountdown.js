@@ -4,9 +4,16 @@ export default function useExamCountdown(examEndTime, onExpire) {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const intervalRef = useRef(null);
   const hasExpiredRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
+  const examEndTimeRef = useRef(examEndTime);
+
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
-    hasExpiredRef.current = false;
+    if (examEndTime !== examEndTimeRef.current) {
+      examEndTimeRef.current = examEndTime;
+      hasExpiredRef.current = false;
+    }
 
     const calcRemaining = () => {
       const now = new Date();
@@ -23,12 +30,12 @@ export default function useExamCountdown(examEndTime, onExpire) {
       if (remaining <= 0 && !hasExpiredRef.current) {
         hasExpiredRef.current = true;
         clearInterval(intervalRef.current);
-        onExpire();
+        onExpireRef.current();
       }
     }, 1000);
 
     return () => clearInterval(intervalRef.current);
-  }, [examEndTime, onExpire]);
+  }, [examEndTime]);
 
   const hh = String(Math.floor(secondsLeft / 3600)).padStart(2, '0');
   const mm = String(Math.floor((secondsLeft % 3600) / 60)).padStart(2, '0');

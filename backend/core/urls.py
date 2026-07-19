@@ -12,6 +12,7 @@ from pipeline.views import (
     DashboardStatsView,
     AdminRankingsView,
     AdminReportsView,
+    StudentLeaderboardView,
 )
 from exams.views import (
     get_answer_key,
@@ -21,6 +22,7 @@ from exams.views import (
     UploadQuestionsView,
     AdminQuestionListView,
     AdminQuestionDetailView,
+    StudentReviewView,
 )
 
 
@@ -49,4 +51,6 @@ urlpatterns = [
     path('api/admin/questions/<int:question_id>/', AdminQuestionDetailView.as_view(), name='admin-question-detail'),
     path('api/admin/rankings/', AdminRankingsView.as_view(), name='admin-rankings'),
     path('api/admin/reports/', AdminReportsView.as_view(), name='admin-reports'),
+    path('api/student/leaderboard/', StudentLeaderboardView.as_view(), name='student-leaderboard'),
+    path('api/student/review/', StudentReviewView.as_view(), name='student-review'),
 ]

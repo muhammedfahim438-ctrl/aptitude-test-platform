@@ -6,12 +6,14 @@ import AdminLogin from '../pages/admin/AdminLogin'
 import AdminDashboard from '../pages/admin/AdminDashboard'
 import AdminQuestions from '../pages/admin/AdminQuestions'
 import TeacherUpload from '../pages/admin/TeacherUpload'
+import AdminQuestionDateDetail from '../pages/admin/AdminQuestionDateDetail'
 import PlatformAnalytics from '../pages/admin/PlatformAnalytics'
 import RankPage from '../pages/admin/RankPage'
 import TeacherReports from '../pages/admin/TeacherReports'
 import ExamPage from '../pages/student/ExamPage'
 import LeaderboardPage from '../pages/student/LeaderboardPage'
 import Register from '../pages/student/Register'
+import AnswerReview from '../pages/student/AnswerReview'
 
 export default function AppRouter() {
   return (
@@ -42,6 +44,14 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/student/review"
+          element={
+            <ProtectedRoute requiredRole="is_student">
+              <AnswerReview />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/admin/dashboard"
@@ -68,10 +78,10 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/admin/questions/date/:examDate"
+          path="/admin/questions/date/:date"
           element={
             <ProtectedRoute requiredRole="is_teacher">
-              <AdminQuestions />
+              <AdminQuestionDateDetail />
             </ProtectedRoute>
           }
         />

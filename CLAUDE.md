@@ -1,6 +1,8 @@
 # CLAUDE.md — Aptitude Test Platform
 
 > **Purpose:** This document provides Claude (or any AI assistant) with a complete understanding of the project — architecture, codebase conventions, sprint structure, development workflow, and all critical constraints. Read this file before making any changes to the codebase.
+>
+> **For granular per-member status:** See `docs/PROJECT_STATUS.md` — maps every spec item from `my project.md` to implementation state.
 
 ---
 
@@ -72,15 +74,15 @@ Student Login → Dashboard → Assessment Details → Exam (timed) → Submit �
 | React | ^18.3.1 | UI library |
 | Vite | ^5.4.0 | Build tool |
 | Axios | ^1.7.0 | HTTP client |
-| React Router DOM | ^6.26.0 | Installed but NOT used (custom router) |
-| jwt-decode | ^4.0.0 | Installed but NOT currently used |
+| React Router DOM | ^6.26.0 | Client-side routing (BrowserRouter) |
+| jwt-decode | ^4.0.0 | JWT token decoding in ProtectedRoute |
 
 ### Styling
-- **No CSS framework** — all inline styles
+- **No CSS framework** — all inline styles + minimal global CSS in `index.css`
 - Fonts: Space Grotesk (headings), Inter (body), JetBrains Mono (labels)
-- Icons: Google Material Symbols Outlined
+- Icons: Google Material Symbols Outlined + Remix Icons (admin pages)
 - Mobile-first design (max-width: 480px)
-- Consistent color tokens defined as `C` constants in each component
+- Color tokens: primary blue `#465aa3`, orange accent `#E8621A`/`#ff6b00`, backgrounds `#f9f9f7`/`#fff`
 
 ---
 
@@ -91,6 +93,7 @@ aptitude-test-platform/
 ├── CLAUDE.md                          ← YOU ARE HERE
 ├── README.md                          (has merge conflicts — do not trust)
 ├── docs/
+│   ├── PROJECT_STATUS.md              (per-member implementation status vs spec)
 │   ├── PROJECT_IMPLEMENTATION_KIT.md  (placeholder — not yet written)
 │   └── aptitude_test_platform.postman_collection.json
 │
@@ -105,7 +108,7 @@ aptitude-test-platform/
 │   │   ├── settings/
 │   │   │   ├── __init__.py
 │   │   │   ├── base.py                ← Shared settings (timezone, JWT, apps)
-│   │   │   ├── local.py               ← Dev settings (SQLite, 7-day tokens)
+│   │   │   ├── local.py               ← Dev settings (SQLite, 15-min tokens — see §16)
 │   │   │   └── production.py          ← Prod settings (PostgreSQL, 15-min tokens)
 │   │   ├── urls.py                    ← ALL route definitions live here
 │   │   ├── wsgi.py
@@ -114,25 +117,27 @@ aptitude-test-platform/
 │   │
 │   ├── accounts/                      ← User model, auth endpoints
 │   │   ├── models.py                  ← CustomUser (email as USERNAME_FIELD)
-│   │   ├── managers.py                ← CustomUserManager
+│   │   ├── managers.py                ← Empty stub (manager logic in models.py)
 │   │   ├── views.py                   ← Login, register, student-signin, refresh
-│   │   ├── serializers.py
-│   │   └── tests.py                   ← Auth & security tests (~21 tests)
+│   │   ├── serializers.py             ← Dead code (views don't use them)
+│   │   └── tests.py                   ← Auth & security tests (21 tests)
 │   │
 │   ├── exams/                         ← Questions, answer keys, submissions
-│   │   ├── models.py                  ← Question, AnswerKey, StudentSubmission
-│   │   ├── views.py                   ← Questions, answers, submit endpoints
-│   │   ├── serializers.py
+│   │   ├── models.py                  ← Question (with image + retake_allowed), AnswerKey, StudentSubmission
+│   │   ├── views.py                   ← Questions, answers, submit + admin upload/list/delete
+│   │   ├── serializers.py             ← QuestionSerializer, AdminQuestionSerializer, StudentSubmissionSerializer
 │   │   ├── cache.py                   ← Redis cache logic for questions
+│   │   ├── admin.py                   ← Admin registration for Question, AnswerKey, StudentSubmission
 │   │   └── management/commands/
-│   │       └── warm_question_cache.py  ← Cron-triggered cache preloader
+│   │       ├── warm_question_cache.py  ← Cron-triggered cache preloader
+│   │       └── seed_test_data.py       ← Dev utility to seed test data
 │   │
 │   ├── pipeline/                      ← Score aggregation & leaderboards
-│   │   ├── models.py                  ← DailyScore, Daily/WeeklyLeaderboard, etc.
-│   │   ├── views.py                   ← Report download, internal cron endpoints
+│   │   ├── models.py                  ← DailyScore, Daily/WeeklyLeaderboard, ScheduledFileDeletion, ReportDownloadLog
+│   │   ├── views.py                   ← Report download, dashboard stats, rankings, reports, internal cron endpoints
 │   │   ├── aggregation.py             ← Core scoring logic
 │   │   ├── signals.py                 ← Stale CSV purge on new question upload
-│   │   ├── tests/                     ← ~14 tests (aggregation, deletion, signals, integration)
+│   │   ├── tests/                     ← 19 tests (aggregation, deletion, signals, leaderboard, integration)
 │   │   └── management/commands/
 │   │       ├── aggregate_scores.py    ← Grade submissions for a date
 │   │       ├── compute_weekly_leaderboard.py
@@ -143,40 +148,42 @@ aptitude-test-platform/
 │       └── locustfile.py              ← Load test (2000 concurrent users)
 │
 └── frontend/
-    ├── index.html
+    ├── index.html                     ← Remix Icon CDN + Material Symbols + Google Fonts
     ├── package.json
     ├── vite.config.js
     ├── public/
     │   ├── app-logo.png
     │   └── college-logo.png
     └── src/
-        ├── main.jsx                   ← Entry point
-        ├── App.jsx                    ← Root component
-        ├── index.css                  ← Global styles
+        ├── main.jsx                   ← Entry point (renders AppRouter directly)
+        ├── index.css                  ← Global styles, fonts, design tokens
         ├── api/
-        │   └── client.js             ← Axios instance with JWT interceptors
+        │   └── client.js             ← Axios instance with JWT interceptors + authAPI/examAPI/adminAPI
         ├── router/
-        │   ├── AppRouter.jsx          ← Custom state-based router (NOT React Router)
-        │   └── ProtectedRoute.jsx     ← TODO placeholder
+        │   ├── AppRouter.jsx          ← React Router v6 (BrowserRouter)
+        │   └── ProtectedRoute.jsx     ← JWT decode + role guard
         ├── hooks/
-        │   ├── usePersistedAnswers.js ← TODO placeholder
-        │   └── useExamCountdown.js    ← TODO placeholder
+        │   ├── usePersistedAnswers.js  ← Base64-encoded localStorage answers
+        │   └── useExamCountdown.js     ← Countdown timer + auto-submit
         ├── components/
-        │   ├── QuestionCard.jsx       ← TODO placeholder
-        │   └── CountdownTimer.jsx     ← TODO placeholder
+        │   ├── QuestionCard.jsx        ← Question + image + options
+        │   ├── CountdownTimer.jsx      ← Timer display component
+        │   └── BottomNav.jsx           ← Admin bottom navigation
         └── pages/
-            ├── Login.jsx              ← Full implementation (passwordless student sign-in)
+            ├── Login.jsx               ← Student passwordless sign-in + admin login link
             ├── student/
-            │   ├── Register.jsx       ← Student registration with password
-            │   ├── Dashboard.jsx      ← Welcome, profile, nav to exam/review
-            │   ├── AssessmentDetails.jsx ← Exam instructions & consent
-            │   ├── ExamPage.jsx       ← Exam UI (⚠️ TEMPORARY preview mode — see §16)
-            │   ├── SubmitPage.jsx     ← Question palette + submit
-            │   ├── ProcessingPage.jsx ← Animated processing screen
-            │   ├── SuccessPage.jsx    ← Confirmation
-            │   └── AnswerReview.jsx   ← Score breakdown & question review
-            └── teacher/
-                └── TeacherUpload.jsx  ← TODO placeholder
+            │   ├── Register.jsx        ← Student registration with password
+            │   ├── ExamPage.jsx        ← Real API exam interface (NOT temp preview)
+            │   └── LeaderboardPage.jsx ← Leaderboard (uses mock data — see §16)
+            └── admin/
+                ├── AdminLogin.jsx      ← Teacher/admin login
+                ├── AdminDashboard.jsx  ← Stats dashboard with nav tiles
+                ├── AdminQuestions.jsx  ← Question management (list by date)
+                ├── AdminQuestionDateDetail.jsx ← Questions for a specific date
+                ├── TeacherUpload.jsx   ← Question upload form (bulk)
+                ├── PlatformAnalytics.jsx ← Analytics with charts
+                ├── RankPage.jsx        ← Daily/weekly rankings
+                └── TeacherReports.jsx  ← Report download with date filters
 ```
 
 ---
@@ -264,13 +271,13 @@ aptitude-test-platform/
 | Production settings | Shahin | ✅ Done | `core/settings/production.py` |
 | Procfile for deployment | Shahin | ✅ Done | `backend/Procfile` |
 | Environment variables setup | Shahin | ✅ Done | `.env.example` |
-| ProtectedRoute component | Vijay | ⬜ TODO | `router/ProtectedRoute.jsx` |
-| TeacherUpload page | Vijay | ⬜ TODO | `pages/teacher/TeacherUpload.jsx` |
-| QuestionCard component | Vijay | ⬜ TODO | `components/QuestionCard.jsx` |
-| CountdownTimer component | Vikky | ⬜ TODO | `components/CountdownTimer.jsx` |
-| usePersistedAnswers hook | Vikky | ⬜ TODO | `hooks/usePersistedAnswers.js` |
-| useExamCountdown hook | Vikky | ⬜ TODO | `hooks/useExamCountdown.js` |
-| Revert ExamPage from temp to real API | Vikky | ⬜ TODO | `pages/student/ExamPage.jsx` |
+| ProtectedRoute component | Vijay | ✅ Done | `router/ProtectedRoute.jsx` |
+| TeacherUpload page | Vijay | ✅ Done | `pages/admin/TeacherUpload.jsx` |
+| QuestionCard component | Vijay | ✅ Done | `components/QuestionCard.jsx` |
+| CountdownTimer component | Vikky | ✅ Done | `components/CountdownTimer.jsx` |
+| usePersistedAnswers hook | Vikky | ✅ Done | `hooks/usePersistedAnswers.js` |
+| useExamCountdown hook | Vikky | ✅ Done | `hooks/useExamCountdown.js` |
+| Revert ExamPage from temp to real API | Vikky | ✅ Done | `pages/student/ExamPage.jsx` |
 | Write PROJECT_IMPLEMENTATION_KIT.md | All | ⬜ TODO | `docs/PROJECT_IMPLEMENTATION_KIT.md` |
 | Fix README.md merge conflicts | All | ⬜ TODO | `README.md` |
 | CI/CD pipeline | All | ⬜ Not Started | — |
@@ -454,7 +461,7 @@ All routes are defined in `backend/core/urls.py`.
 ### JWT Configuration
 | Setting | Development | Production |
 |---|---|---|
-| Access token lifetime | 7 days | **15 minutes** |
+| Access token lifetime | 15 minutes (⚠️ should be 7 days — see §16 bug #2) | **15 minutes** |
 | Refresh token lifetime | 7 days | 7 days |
 | Rotate on refresh | Yes | Yes |
 | Blacklist after rotation | Yes | Yes |
@@ -466,7 +473,7 @@ All routes are defined in `backend/core/urls.py`.
 ### Custom Permissions (`core/permissions.py`)
 - `IsStudentUser` — checks `request.user.is_student`
 - `IsTeacherUser` — checks `request.user.is_teacher`
-- `IsAnswerWindowOpen` — currently always returns `True` (time gating is in views, not permissions)
+- `IsAnswerWindowOpen` — checks time is within 2PM–7PM (⚠️ uses naive `datetime.now()` — see §16 bug #1)
 
 ### Frontend Token Management (`api/client.js`)
 - Tokens stored in `localStorage` as `access_token` and `refresh_token`
@@ -534,28 +541,31 @@ python manage.py warm_question_cache --date=2025-07-15
 ## 11. Frontend Architecture
 
 ### Routing
-The frontend uses a **custom state-based router** in `AppRouter.jsx`, NOT React Router's `<BrowserRouter>`. Navigation is managed via `useState`. React Router DOM is installed but unused.
+The frontend uses **React Router v6** (`BrowserRouter`) defined in `AppRouter.jsx`. All routes use `<ProtectedRoute>` with JWT decode for role-based access.
 
 ### Page Components
 | Page | Path | Description |
 |---|---|---|
-| Login | `/` | Passwordless student sign-in |
+| Login | `/` | Student passwordless sign-in + admin login link |
 | Register | `/register` | Student registration with password |
-| Dashboard | `/dashboard` | Welcome, profile, nav links |
-| Assessment Details | `/assessment` | Exam instructions, consent |
-| Exam | `/exam` | Question-by-question interface (⚠️ TEMP mode) |
-| Submit | `/submit` | Question palette, summary, submit |
-| Processing | `/processing` | Animated loading screen |
-| Success | `/success` | Confirmation |
-| Answer Review | `/review` | Score breakdown |
+| Exam | `/student/exam` | Real API exam interface with countdown + auto-submit |
+| Leaderboard | `/student/leaderboard` | Student leaderboard view (⚠️ uses mock data — see §16) |
+| Admin Login | `/admin/login` | Teacher/admin login |
+| Admin Dashboard | `/admin/dashboard` | Stats dashboard with nav tiles |
+| Admin Questions | `/admin/questions` | Question management (list by date) |
+| Teacher Upload | `/admin/questions/upload` | Bulk question upload form |
+| Question Date Detail | `/admin/questions/date/:examDate` | View/delete questions for a date |
+| Platform Analytics | `/admin/stats` | Analytics with SVG charts |
+| Rankings | `/admin/rank` | Daily/weekly rankings |
+| Reports | `/admin/reports` | Report download with date filters |
 
 ### Design System
 All components use inline styles with this color palette:
 ```javascript
 const C = {
-  primary: '#1a73e8',
-  primaryDark: '#1557b0',
-  bg: '#f0f2f5',
+  primary: '#465aa3',
+  primaryDark: '#364a8a',
+  bg: '#f9f9f7',
   card: '#ffffff',
   text: '#1a1a2e',
   textMuted: '#6b7280',
@@ -683,27 +693,25 @@ main ← development ← feature/* branches
 ## 16. Known Issues & TODOs
 
 ### Critical
-1. **`ExamPage.jsx` is in TEMPORARY preview mode** — uses hardcoded fake questions and a 10-second timer. Instructions to revert to real API are in the file. Must be fixed before production.
-2. **`README.md` has unresolved merge conflicts** — three-way conflict. Do not rely on it for documentation.
-3. **`PROJECT_IMPLEMENTATION_KIT.md` is a placeholder** — says "paste full content here".
+1. **`IsAnswerWindowOpen` uses naive `datetime.now()`** — while `USE_TZ=True`, this may produce incorrect time comparisons in production. Should use `timezone.now().time()` instead. Location: `core/permissions.py:29`
+2. **Dev JWT access token is 15min instead of 7 days** — `local.py` doesn't override `SIMPLE_JWT`, so devs get logged out constantly during development. Location: `core/settings/local.py`
 
 ### Frontend TODOs
-4. `ProtectedRoute.jsx` — route protection not implemented
-5. `TeacherUpload.jsx` — no teacher functionality built yet
-6. `QuestionCard.jsx` — component not built
-7. `CountdownTimer.jsx` — component not built
-8. `usePersistedAnswers.js` — hook not implemented
-9. `useExamCountdown.js` — hook not implemented
+3. **`LeaderboardPage.jsx` uses mock data** — not connected to real API. Must wire up before production.
+4. **No Answer Review page** — old `AnswerReview.jsx` was removed. Students can't review answers after exam. (US-K03 from spec not implemented.)
+5. **`Login.jsx` unnecessary login call** — calls `authAPI.login(email, email)` before falling back to student-signin. Should call student-signin directly.
+6. **`Register.jsx` same pattern** — calls `authAPI.login()` before `register()`. Should call register directly.
+7. **Mixed icon systems** — admin pages use Remix Icons (`ri-*`) while student pages use Material Symbols. Should standardize.
 
 ### Backend Notes
-10. `IsAnswerWindowOpen` permission always returns `True` — time gating is in view logic
-11. `exams/urls.py` and `accounts/urls.py` are empty files
-12. `jwt-decode` package installed but not used in frontend
+8. `accounts/serializers.py` is dead code — views don't use serializers
+9. `accounts/managers.py` is empty stub — manager logic lives in models.py
+10. `exams/urls.py` and `accounts/urls.py` are empty files
 
 ### Missing Infrastructure
-13. No CI/CD pipeline (GitHub Actions, etc.)
-14. No Dockerfile
-15. No frontend testing framework
+11. No CI/CD pipeline (GitHub Actions, etc.)
+12. No Dockerfile
+13. No frontend testing framework
 
 ---
 
@@ -715,10 +723,10 @@ main ← development ← feature/* branches
 4. **CSV reports auto-delete after 4 hours** — do not assume reports persist
 5. **Questions return 503 during exam window on cache miss** — this is intentional (prevents DB overload)
 6. **Production JWT tokens expire in 15 minutes** — frontend must handle refresh gracefully
-7. **Frontend uses custom state-based routing** — do NOT assume React Router's `<BrowserRouter>` is active
+7. **Frontend uses React Router v6** — `BrowserRouter` with role-based `ProtectedRoute` guards
 8. **All API routes are in `core/urls.py`** — app-level `urls.py` files are empty by design
 9. **Database is PostgreSQL in production** — never hardcode SQLite for prod
-10. **The `ExamPage.jsx` preview mode must be reverted** before any real exam is administered
+10. **`ExamPage.jsx` uses real API** — the old temp preview mode has been removed
 
 ---
 

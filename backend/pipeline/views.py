@@ -14,9 +14,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 
-from core.permissions import IsTeacherUser
+from core.permissions import IsTeacherUser, IsStudentUser
 from exams.models import Question, StudentSubmission
-from .models import ScheduledFileDeletion, ReportDownloadLog, WeeklyLeaderboard, DailyScore
+from .models import ScheduledFileDeletion, ReportDownloadLog, WeeklyLeaderboard, DailyScore, DailyLeaderboard
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -262,4 +262,48 @@ class AdminReportsView(APIView):
             'total_attended': total_attended,
             'total_absent': total_absent,
             'student_performance': student_performance,
+        }, status=status.HTTP_200_OK)
+
+
+class StudentLeaderboardView(APIView):
+    permission_classes = [IsAuthenticated, IsStudentUser]
+
+    def get(self, request):
+        top = int(request.query_params.get('top', 25))
+
+        latest_date = (
+            DailyScore.objects.order_by('-exam_date')
+            .values_list('exam_date', flat=True)
+            .first()
+        )
+        if not latest_date:
+            return Response({
+                'rankings': [],
+                'total_examinees': 0,
+                'latest_date': None,
+            }, status=status.HTTP_200_OK)
+
+        total_examinees = DailyScore.objects.filter(
+            exam_date=latest_date
+        ).count()
+
+        rows = (
+            DailyScore.objects.filter(exam_date=latest_date)
+            .select_related('student')
+            .order_by('-score')[:top]
+        )
+        data = [
+            {
+                'rank': idx + 1,
+                'name': row.student.full_name,
+                'roll_number': row.student.roll_number or '',
+                'score': row.score,
+            }
+            for idx, row in enumerate(rows)
+        ]
+
+        return Response({
+            'rankings': data,
+            'total_examinees': total_examinees,
+            'latest_date': latest_date.isoformat(),
         }, status=status.HTTP_200_OK)

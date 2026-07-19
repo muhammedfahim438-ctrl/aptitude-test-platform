@@ -89,14 +89,17 @@ export default function ExamPage() {
           setSubmitted(true);
           clearAnswers();
         } catch (err) {
-          if (retriesLeft > 0) {
+          const status = err.response?.status;
+          const isRetryable = !status || status === 503 || status === 500;
+          if (retriesLeft > 0 && isRetryable) {
             await new Promise((r) => setTimeout(r, 2000));
             return attempt(retriesLeft - 1);
           }
+          const msg = err.response?.data?.error || err.message || 'Unknown error';
           setSubmitError(
             isAutoSubmit
-              ? 'Auto-submit failed after 3 attempts. Please submit manually if possible.'
-              : 'Submission failed. Please try again.'
+              ? `Auto-submit failed: ${msg}. Please submit manually if possible.`
+              : `Submission failed: ${msg}`
           );
         }
       };
@@ -199,6 +202,21 @@ export default function ExamPage() {
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
               Your answers have been recorded.
             </p>
+            <button
+              onClick={() => navigate('/student/review')}
+              style={{
+                marginTop: 14, background: '#fff', color: '#116b51',
+                border: '1px solid #116b5150', borderRadius: 999,
+                padding: '10px 20px', fontFamily: 'Space Grotesk',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#116b51' }}>
+                visibility
+              </span>
+              Review Answers
+            </button>
           </div>
         )}
 

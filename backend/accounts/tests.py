@@ -30,9 +30,14 @@ class AnswerKeyTimeGateTest(TestCase):
         }, content_type='application/json')
         return response.data['access']
 
-    @patch('core.permissions.datetime')
-    def test_access_before_window_1359(self, mock_dt):
-        mock_dt.now.return_value = datetime(2026, 6, 18, 13, 59, 0)
+    def _mock_now(self, dt):
+        mock_tz = patch('core.permissions.timezone')
+        mocked = mock_tz.start()
+        mocked.now.return_value = dt
+        self.addCleanup(mock_tz.stop)
+
+    def test_access_before_window_1359(self):
+        self._mock_now(datetime(2026, 6, 18, 13, 59, 0))
         token = self.get_token()
         response = self.client.get(
             self.url + '?date=2026-06-18',
@@ -40,9 +45,8 @@ class AnswerKeyTimeGateTest(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    @patch('core.permissions.datetime')
-    def test_access_at_window_open_1400(self, mock_dt):
-        mock_dt.now.return_value = datetime(2026, 6, 18, 14, 0, 0)
+    def test_access_at_window_open_1400(self):
+        self._mock_now(datetime(2026, 6, 18, 14, 0, 0))
         token = self.get_token()
         response = self.client.get(
             self.url + '?date=2026-06-18',
@@ -50,9 +54,8 @@ class AnswerKeyTimeGateTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-    @patch('core.permissions.datetime')
-    def test_access_inside_window_1630(self, mock_dt):
-        mock_dt.now.return_value = datetime(2026, 6, 18, 16, 30, 0)
+    def test_access_inside_window_1630(self):
+        self._mock_now(datetime(2026, 6, 18, 16, 30, 0))
         token = self.get_token()
         response = self.client.get(
             self.url + '?date=2026-06-18',
@@ -60,9 +63,8 @@ class AnswerKeyTimeGateTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-    @patch('core.permissions.datetime')
-    def test_access_at_window_close_1859(self, mock_dt):
-        mock_dt.now.return_value = datetime(2026, 6, 18, 18, 59, 0)
+    def test_access_at_window_close_1859(self):
+        self._mock_now(datetime(2026, 6, 18, 18, 59, 0))
         token = self.get_token()
         response = self.client.get(
             self.url + '?date=2026-06-18',
@@ -70,9 +72,8 @@ class AnswerKeyTimeGateTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-    @patch('core.permissions.datetime')
-    def test_access_at_window_close_1900(self, mock_dt):
-        mock_dt.now.return_value = datetime(2026, 6, 18, 19, 0, 0)
+    def test_access_at_window_close_1900(self):
+        self._mock_now(datetime(2026, 6, 18, 19, 0, 0))
         token = self.get_token()
         response = self.client.get(
             self.url + '?date=2026-06-18',
@@ -80,9 +81,8 @@ class AnswerKeyTimeGateTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-    @patch('core.permissions.datetime')
-    def test_access_after_window_1901(self, mock_dt):
-        mock_dt.now.return_value = datetime(2026, 6, 18, 19, 1, 0)
+    def test_access_after_window_1901(self):
+        self._mock_now(datetime(2026, 6, 18, 19, 1, 0))
         token = self.get_token()
         response = self.client.get(
             self.url + '?date=2026-06-18',

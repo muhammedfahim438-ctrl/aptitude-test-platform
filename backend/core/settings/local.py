@@ -1,5 +1,6 @@
 ﻿# core/settings/local.py
 from .base import *
+from datetime import timedelta
 import os
 
 DEBUG = True
@@ -12,6 +13,8 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'] = timedelta(days=7)
 
 CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
 CORS_ALLOW_CREDENTIALS = True

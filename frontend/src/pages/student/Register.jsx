@@ -76,10 +76,7 @@ export default function Register() {
     }
     setLoading(true)
     try {
-      const res = await authAPI.login(form.email, form.password)
-      // Try register endpoint instead
-      const axios = (await import('../../api/client')).default
-      const regRes = await axios.post('/api/auth/register/', {
+      const res = await authAPI.register({
         full_name: form.full_name,
         roll_number: form.roll_number,
         department: form.department,
@@ -89,9 +86,9 @@ export default function Register() {
         mobile: form.mobile,
         password: form.password,
       })
-      localStorage.setItem('access_token', regRes.data.access)
-      localStorage.setItem('refresh_token', regRes.data.refresh)
-      localStorage.setItem('user', JSON.stringify(regRes.data.user))
+      localStorage.setItem('access_token', res.data.access)
+      localStorage.setItem('refresh_token', res.data.refresh)
+      localStorage.setItem('user', JSON.stringify(res.data.user))
       setSuccess(true)
       setTimeout(() => navigate('/student/exam', { replace: true }), 1500)
     } catch (err) {

@@ -74,7 +74,7 @@ class GetExamQuestionsView(APIView):
         cached = get_questions_cached(exam_date)
         if cached is not None:
             logger.info(f"[CACHE HIT] questions for {exam_date}")
-            return Response({'questions': cached, 'source': 'cache'})
+            return Response({'date': exam_date, 'questions': cached, 'source': 'cache'})
 
         if is_exam_window:
             logger.error(f"[CACHE MISS DURING EXAM WINDOW] date={exam_date}")
@@ -92,7 +92,7 @@ class GetExamQuestionsView(APIView):
             )
 
         questions = get_questions_cached(exam_date)
-        return Response({'questions': questions, 'source': 'db_fallback'})
+        return Response({'date': exam_date, 'questions': questions, 'source': 'db_fallback'})
 
 
 @csrf_exempt
@@ -132,7 +132,7 @@ class SubmitAnswersView(APIView):
         now = timezone.now().time()
         if now > time(14, 0):
             return Response(
-                {'error': 'Exam window has closed. Submissions are no longer accepted.'},
+                {'detail': 'Exam window closed. Submissions are no longer accepted after 2:00 PM IST.'},
                 status=status.HTTP_409_CONFLICT
             )
 
@@ -144,8 +144,15 @@ class SubmitAnswersView(APIView):
                     defaults={'answers': answers},
                 )
             logger.info(f"[SUBMIT] {'Created' if created else 'Updated'} - student={request.user.id}, date={exam_date_str}")
+            answers_submitted = len(answers) if isinstance(answers, (list, dict)) else 0
             return Response(
-                {'status': 'submitted', 'created': created},
+                {
+                    'message': 'Submission received',
+                    'student': request.user.email,
+                    'exam_date': exam_date_str,
+                    'answers_submitted': answers_submitted,
+                    'created': created,
+                },
                 status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
             )
         except Exception as e:
@@ -306,3 +313,80 @@ class AdminQuestionDetailView(APIView):
         question.delete()
         logger.info(f"[DELETE] Question {question_id} deleted by {request.user.email}")
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentReviewView(APIView):
+    permission_classes = [IsAuthenticated, IsStudentUser]
+
+    REVIEW_OPEN_HOUR = 14
+    REVIEW_CLOSE_HOUR = 19
+
+    def get(self, request):
+        exam_date = request.query_params.get('date')
+        if not exam_date:
+            exam_date = str(timezone.now().date())
+
+        try:
+            datetime.strptime(exam_date, '%Y-%m-%d')
+        except ValueError:
+            return Response(
+                {'detail': 'Invalid date format. Use YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            submission = StudentSubmission.objects.get(
+                student=request.user, exam_date=exam_date
+            )
+        except StudentSubmission.DoesNotExist:
+            return Response(
+                {'detail': 'You have not submitted an exam for this date.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        now = timezone.now().time()
+        window_open = time(self.REVIEW_OPEN_HOUR, 0) <= now <= time(self.REVIEW_CLOSE_HOUR, 0)
+
+        response_data = {
+            'date': exam_date,
+            'submitted_at': submission.submitted_at.isoformat(),
+            'answers': submission.answers,
+            'correct_answers': None,
+            'score': None,
+            'window_status': self._window_status(now),
+            'opens_at': '14:00',
+            'closes_at': '19:00',
+        }
+
+        if not window_open:
+            logger.info(
+                f"[REVIEW] {request.user.email} polled review for {exam_date} - "
+                f"window {'not yet open' if now < time(self.REVIEW_OPEN_HOUR, 0) else 'closed'}"
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        try:
+            answer_key = AnswerKey.objects.get(date=exam_date)
+        except AnswerKey.DoesNotExist:
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        correct = answer_key.correct_answers or {}
+        user_answers = submission.answers or {}
+        score = sum(
+            1 for qid, ans in user_answers.items() if correct.get(qid) == ans
+        )
+
+        response_data['correct_answers'] = correct
+        response_data['score'] = score
+        response_data['total_questions'] = len(correct)
+        logger.info(
+            f"[REVIEW] {request.user.email} viewed review for {exam_date} - score {score}/{len(correct)}"
+        )
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def _window_status(self, now):
+        if now < time(self.REVIEW_OPEN_HOUR, 0):
+            return 'before_window'
+        if now > time(self.REVIEW_CLOSE_HOUR, 0):
+            return 'after_window'
+        return 'open'

@@ -22,8 +22,10 @@ axiosClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    const url = originalRequest.url || ''
+    const isAuthEndpoint = url.includes('/api/auth/login/') || url.includes('/api/auth/student-signin/') || url.includes('/api/auth/register/') || url.includes('/api/auth/refresh/')
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
       const refreshToken = localStorage.getItem('refresh_token')
 
@@ -55,6 +57,12 @@ export const authAPI = {
   login: (email, password) =>
     axiosClient.post('/api/auth/login/', { email, password }),
 
+  register: (data) =>
+    axiosClient.post('/api/auth/register/', data),
+
+  studentSignin: (data) =>
+    axiosClient.post('/api/auth/student-signin/', data),
+
   refresh: (refresh) =>
     axiosClient.post('/api/auth/refresh/', { refresh }),
 }
@@ -68,6 +76,12 @@ export const examAPI = {
 
   getAnswerKey: (date) =>
     axiosClient.get(`/api/tests/answers/?date=${date}`),
+
+  getLeaderboard: (top = 25) =>
+    axiosClient.get(`/api/student/leaderboard/?top=${top}`),
+
+  getReview: (date) =>
+    axiosClient.get(`/api/student/review/?date=${date}`),
 }
 
 export const adminAPI = {

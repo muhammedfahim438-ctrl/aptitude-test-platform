@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { authAPI } from '../../api/client'
+import { authAPI } from '../api/client'
 
 const DEPARTMENT_GROUPS = [
   {
@@ -160,10 +160,7 @@ export default function LoginPage() {
       const departmentToSend = form.department === OTHERS_VALUE
         ? form.custom_department.trim() : form.department
 
-      const res = await authAPI.login(form.email, form.email)
-      // Fallback: use student-signin endpoint
-      const axios = (await import('../../api/client')).default
-      const signInRes = await axios.post('/api/auth/student-signin/', {
+      const res = await authAPI.studentSignin({
         full_name: form.full_name,
         roll_number: form.roll_number,
         department: departmentToSend,
@@ -172,32 +169,12 @@ export default function LoginPage() {
         year: form.year,
         semester: form.semester,
       })
-      localStorage.setItem('access_token', signInRes.data.access)
-      localStorage.setItem('refresh_token', signInRes.data.refresh)
-      localStorage.setItem('user', JSON.stringify(signInRes.data.user))
+      localStorage.setItem('access_token', res.data.access)
+      localStorage.setItem('refresh_token', res.data.refresh)
+      localStorage.setItem('user', JSON.stringify(res.data.user))
       navigate('/student/exam', { replace: true })
     } catch (err) {
-      // Try direct student-signin
-      try {
-        const axios = (await import('../../api/client')).default
-        const departmentToSend = form.department === OTHERS_VALUE
-          ? form.custom_department.trim() : form.department
-        const res = await axios.post('/api/auth/student-signin/', {
-          full_name: form.full_name,
-          roll_number: form.roll_number,
-          department: departmentToSend,
-          email: form.email,
-          mobile: form.mobile,
-          year: form.year,
-          semester: form.semester,
-        })
-        localStorage.setItem('access_token', res.data.access)
-        localStorage.setItem('refresh_token', res.data.refresh)
-        localStorage.setItem('user', JSON.stringify(res.data.user))
-        navigate('/student/exam', { replace: true })
-      } catch (innerErr) {
-        setError(innerErr.response?.data?.detail || 'Sign in failed. Please try again.')
-      }
+      setError(err.response?.data?.detail || 'Sign in failed. Please try again.')
     } finally {
       setLoading(false)
     }

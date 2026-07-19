@@ -59,7 +59,7 @@ function NavItem({ icon, label, onClick, active }) {
       onClick={onClick}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-        background: 'none', border: 'none', cursor: 'pointer',
+        border: 'none', cursor: 'pointer',
         color: active ? C.primary : C.onSurfaceVariant,
         padding: active ? '4px 16px' : '6px 12px',
         borderRadius: active ? 999 : 0,
