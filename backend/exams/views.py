@@ -196,6 +196,7 @@ class UploadQuestionsView(APIView):
         exam_date_str = request.data.get('date')
         questions_raw = request.data.get('questions')
 
+        # --- Basic payload validation ---
         if not exam_date_str:
             return Response(
                 {'error': 'date is required (YYYY-MM-DD).'},
@@ -216,6 +217,7 @@ class UploadQuestionsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # questions arrives as a JSON string inside FormData — must decode it
         try:
             questions_payload = json.loads(questions_raw)
         except (TypeError, json.JSONDecodeError):
@@ -230,6 +232,7 @@ class UploadQuestionsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # --- Per-question validation (fail fast, before touching the DB) ---
         for idx, q in enumerate(questions_payload, start=1):
             missing = [f for f in self.REQUIRED_FIELDS if not str(q.get(f, '')).strip()]
             if missing:
@@ -250,8 +253,10 @@ class UploadQuestionsView(APIView):
                 correct_answers = {}
 
                 for idx, q in enumerate(questions_payload, start=1):
-                    image_file = request.FILES.get(f'image_{idx - 1}')
+                    image_file = request.FILES.get(f'image_{idx - 1}')  # frontend uses 0-based index
 
+                    # Individual .save() — NOT bulk_create — required so the
+                    # pre_save signal (stale CSV / leaderboard purge) fires.
                     question = Question(
                         exam_date=exam_date_str,
                         text=q['text'],
@@ -262,6 +267,9 @@ class UploadQuestionsView(APIView):
                         retake_allowed=bool(q.get('retake_allowed', True)),
                     )
                     if image_file:
+                        # Assumes Question has an ImageField/FileField named `image`
+                        # backed by Supabase Storage per the infra map. Adjust the
+                        # field name here if your model calls it something else.
                         question.image = image_file
 
                     question.save()
