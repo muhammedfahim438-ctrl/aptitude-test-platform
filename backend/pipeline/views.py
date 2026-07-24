@@ -5,6 +5,7 @@ from datetime import date, timedelta, time
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.db import models
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -164,8 +165,11 @@ def cleanup_day_view(request):
 class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherUser]
 
+    DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
     def get(self, request):
         today = date.today()
+        now = timezone.now()
 
         total_students = User.objects.filter(
             is_student=True, is_active=True
@@ -179,11 +183,53 @@ class DashboardStatsView(APIView):
             exam_date=today
         ).count()
 
+        avg_score = 0.0
+        today_scores = DailyScore.objects.filter(exam_date=today).values_list('score', flat=True)
+        if today_scores:
+            avg_score = round(sum(today_scores) / len(today_scores), 1)
+
+        graded_today = DailyScore.objects.filter(exam_date=today).count()
+        completion_rate = round((graded_today / tests_completed) * 100, 1) if tests_completed > 0 else 0.0
+
+        overall_attendance = round((tests_completed / total_students) * 100, 1) if total_students > 0 else 0.0
+
+        seven_days_ago = today - timedelta(days=6)
+        daily_activity = []
+        submission_counts = (
+            StudentSubmission.objects.filter(exam_date__gte=seven_days_ago, exam_date__lte=today)
+            .values('exam_date')
+            .annotate(count=models.Count('id'))
+        )
+        count_map = {row['exam_date']: row['count'] for row in submission_counts}
+        for i in range(7):
+            d = seven_days_ago + timedelta(days=i)
+            daily_activity.append({
+                'day': self.DAYS_SHORT[d.weekday()],
+                'submissions': count_map.get(d, 0),
+            })
+
+        this_week_start = today - timedelta(days=today.weekday())
+        last_week_start = this_week_start - timedelta(days=7)
+        last_week_end = this_week_start - timedelta(days=1)
+        this_week_count = StudentSubmission.objects.filter(
+            exam_date__gte=this_week_start, exam_date__lte=today
+        ).count()
+        last_week_count = StudentSubmission.objects.filter(
+            exam_date__gte=last_week_start, exam_date__lte=last_week_end
+        ).count()
+        weekly_growth = round(((this_week_count - last_week_count) / last_week_count) * 100, 1) if last_week_count > 0 else 0.0
+
         return Response({
             'date': today.isoformat(),
             'total_students': total_students,
             'tests_completed': tests_completed,
             'questions_live': questions_live,
+            'avg_score': avg_score,
+            'weekly_growth': weekly_growth,
+            'daily_activity': daily_activity,
+            'overall_attendance': overall_attendance,
+            'completion_rate': completion_rate,
+            'total_reviews': graded_today,
         })
 
 

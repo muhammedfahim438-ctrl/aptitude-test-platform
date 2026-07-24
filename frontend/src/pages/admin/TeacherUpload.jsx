@@ -26,14 +26,17 @@ const today = () => {
 const DEFAULT_CROP = { unit: '%', x: 10, y: 10, width: 80, height: 80 }
 
 function ImageCropperModal({ src, crop, setCrop, onComplete, onApply, onCancel }) {
+  // react-image-crop v10+ doesn't accept a `src` prop and doesn't forward
+  // its ref to the underlying <img>. The image must be a CHILD, and we
+  // need our OWN ref on that <img> to get naturalWidth/naturalHeight and
+  // a real HTMLImageElement for drawImage(). Without this, imgRef.current
+  // was ReactCrop's wrapper div — not an image — hence the crash.
   const imgRef = useRef(null)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
-  const handleApply = useCallback(async () => {
-    if (!imgRef.current) return
+  const handleApply = useCallback(() => {
     const image = imgRef.current
-    const canvas = document.createElement('canvas')
-    const scaleX = image.naturalWidth / image.width
-    const scaleY = image.naturalHeight / image.height
+    if (!image || !image.complete || image.naturalWidth === 0) return
 
     const pixelCrop = {
       x: (crop.x / 100) * image.naturalWidth,
@@ -42,6 +45,7 @@ function ImageCropperModal({ src, crop, setCrop, onComplete, onApply, onCancel }
       height: (crop.height / 100) * image.naturalHeight,
     }
 
+    const canvas = document.createElement('canvas')
     canvas.width = pixelCrop.width
     canvas.height = pixelCrop.height
     const ctx = canvas.getContext('2d')
@@ -62,18 +66,28 @@ function ImageCropperModal({ src, crop, setCrop, onComplete, onApply, onCancel }
         <h3 className="text-headline-sm font-headline-md text-admin-on-surface">Crop Image</h3>
         <div className="rounded-xl overflow-hidden border border-admin-outline-variant bg-admin-surface-container-low">
           <ReactImageCrop
-            src={src}
             crop={crop}
-            onChange={setCrop}
+            onChange={(_, percentCrop) => setCrop(percentCrop)}
             onComplete={onComplete}
-            ref={imgRef}
-          />
+          >
+            <img
+              ref={imgRef}
+              src={src}
+              alt="Crop preview"
+              onLoad={() => setImgLoaded(true)}
+              style={{ maxHeight: '60vh', width: '100%', display: 'block' }}
+            />
+          </ReactImageCrop>
         </div>
         <div className="flex justify-end gap-2">
           <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-admin-outline-variant text-admin-on-surface-variant font-label-md hover:bg-admin-surface-container-low transition-colors">
             Cancel
           </button>
-          <button onClick={handleApply} className="px-4 py-2 rounded-lg bg-admin-secondary text-admin-on-secondary font-label-md hover:opacity-90 transition-opacity">
+          <button
+            onClick={handleApply}
+            disabled={!imgLoaded}
+            className="px-4 py-2 rounded-lg bg-admin-secondary text-admin-on-secondary font-label-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Apply Crop
           </button>
         </div>
@@ -174,8 +188,8 @@ export default function TeacherUpload() {
 
       <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/admin/questions')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
-            <span className="material-symbols-outlined text-admin-on-surface">menu</span>
+          <button onClick={() => navigate('/admin/dashboard')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+            <span className="material-symbols-outlined text-admin-on-surface">arrow_back</span>
           </button>
           <h1 className="text-headline-sm font-headline-md font-bold text-admin-on-surface">Admin Command</h1>
         </div>

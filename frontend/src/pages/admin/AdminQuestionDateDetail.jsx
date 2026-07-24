@@ -89,7 +89,7 @@ export default function AdminQuestionDateDetail() {
 
       <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/admin/questions')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+          <button onClick={() => navigate('/admin/dashboard')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
             <span className="material-symbols-outlined text-admin-on-surface">arrow_back</span>
           </button>
           <div className="flex flex-col">

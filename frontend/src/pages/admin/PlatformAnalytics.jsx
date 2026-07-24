@@ -3,20 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../../api/client'
 import BottomNav from '../../components/BottomNav'
 
-const daysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function DonutChart({ percent, color = '#ff6b00' }) {
-  const r = 36, c = 2 * Math.PI * r, off = c - (percent / 100) * c
-  return (
-    <svg width="90" height="90" viewBox="0 0 90 90">
-      <circle cx="45" cy="45" r={r} fill="none" stroke="#e5e7eb" strokeWidth="8" />
-      <circle cx="45" cy="45" r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
-        strokeDasharray={c} strokeDashoffset={off} transform="rotate(-90 45 45)" />
-      <text x="45" y="50" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#1a1a2e">{percent}%</text>
-    </svg>
-  )
-}
-
 function LineGraph({ values }) {
   const max = Math.max(...values, 1)
   const w = 280, h = 80, pad = 4
@@ -36,36 +22,25 @@ export default function PlatformAnalytics() {
   const navigate = useNavigate()
   const [analytics, setAnalytics] = useState({
     totalStudents: 0, activeToday: 0, examsTaken: 0, avgScore: 0,
-    weeklyGrowth: 0, dailyData: [], subjectProficiency: [],
+    weeklyGrowth: 0, dailyData: [], overallAttendance: 0,
+    completionRate: 0, totalReviews: 0,
   })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const [dashboardRes, rankingsRes] = await Promise.all([
-          adminAPI.getDashboardStats(),
-          adminAPI.getRankings('weekly', 50),
-        ])
-        const dashboard = dashboardRes.data
-        const rankings = rankingsRes.data.results || rankingsRes.data || []
-        const daily = Array.from({ length: 7 }, (_, i) => ({
-          day: daysShort[(new Date().getDay() - 6 + i + 7) % 7],
-          submissions: Math.max(0, Math.floor(Math.random() * 25)),
-        }))
+        const { data } = await adminAPI.getDashboardStats()
         setAnalytics({
-          totalStudents: dashboard.total_users || 0,
-          activeToday: dashboard.submitted_today || 0,
-          examsTaken: dashboard.submitted_today || 0,
-          avgScore: dashboard.avg_score || 0,
-          weeklyGrowth: 12,
-          dailyData: daily,
-          subjectProficiency: [
-            { name: 'Quantitative', score: 78 },
-            { name: 'Logical', score: 85 },
-            { name: 'Verbal', score: 72 },
-            { name: 'Data Interpretation', score: 68 },
-          ],
+          totalStudents: data.total_students || 0,
+          activeToday: data.tests_completed || 0,
+          examsTaken: data.tests_completed || 0,
+          avgScore: data.avg_score || 0,
+          weeklyGrowth: data.weekly_growth || 0,
+          dailyData: data.daily_activity || [],
+          overallAttendance: data.overall_attendance || 0,
+          completionRate: data.completion_rate || 0,
+          totalReviews: data.total_reviews || 0,
         })
       } catch {
         // silent
@@ -81,8 +56,8 @@ export default function PlatformAnalytics() {
       <div className="flex flex-col min-h-screen bg-admin-surface">
         <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
-              <span className="material-symbols-outlined text-admin-primary">menu</span>
+            <button onClick={() => navigate('/admin/dashboard')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+              <span className="material-symbols-outlined text-admin-primary">arrow_back</span>
             </button>
             <h1 className="text-headline-sm font-headline-md font-bold text-admin-on-surface">Admin Command</h1>
           </div>
@@ -99,8 +74,8 @@ export default function PlatformAnalytics() {
 
       <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
-            <span className="material-symbols-outlined text-admin-primary">menu</span>
+          <button onClick={() => navigate('/admin/dashboard')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+            <span className="material-symbols-outlined text-admin-primary">arrow_back</span>
           </button>
           <h1 className="text-headline-sm font-headline-md font-bold text-admin-on-surface">Admin Command</h1>
         </div>
@@ -155,19 +130,19 @@ export default function PlatformAnalytics() {
               <div className="space-y-2">
                 <div className="flex justify-between text-label-md font-label-md">
                   <span className="text-admin-on-surface-variant">Overall Attendance</span>
-                  <span className="text-admin-on-surface">78%</span>
+                  <span className="text-admin-on-surface">{analytics.overallAttendance}%</span>
                 </div>
                 <div className="w-full bg-admin-surface-container-low rounded-full h-2">
-                  <div className="bg-admin-primary h-2 rounded-full" style={{ width: '78%' }} />
+                  <div className="bg-admin-primary h-2 rounded-full" style={{ width: `${Math.min(analytics.overallAttendance, 100)}%` }} />
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-label-md font-label-md">
                   <span className="text-admin-on-surface-variant">Completion Rate</span>
-                  <span className="text-admin-on-surface">92%</span>
+                  <span className="text-admin-on-surface">{analytics.completionRate}%</span>
                 </div>
                 <div className="w-full bg-admin-surface-container-low rounded-full h-2">
-                  <div className="bg-admin-secondary h-2 rounded-full" style={{ width: '92%' }} />
+                  <div className="bg-admin-secondary h-2 rounded-full" style={{ width: `${Math.min(analytics.completionRate, 100)}%` }} />
                 </div>
               </div>
               <div className="space-y-2">
@@ -212,31 +187,16 @@ export default function PlatformAnalytics() {
                 <div className="text-label-sm font-label-sm text-admin-on-surface-variant">Total Submissions</div>
               </div>
               <div className="bg-admin-surface-container-low p-4 rounded-xl border border-admin-outline-variant">
-                <div className="text-title-md font-headline-md text-admin-on-surface mb-1">23</div>
+                <div className="text-title-md font-headline-md text-admin-on-surface mb-1">{analytics.totalReviews}</div>
                 <div className="text-label-sm font-label-sm text-admin-on-surface-variant">Total Reviews</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bento-card bg-admin-surface-container-lowest p-6 rounded-xl border border-admin-outline-variant shadow-sm">
-          <h3 className="text-title-md font-headline-md text-admin-on-surface mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-admin-primary">school</span>
-            Subject Proficiency
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {analytics.subjectProficiency.map((subject) => (
-              <div key={subject.name} className="text-center">
-                <DonutChart percent={subject.score} />
-                <div className="mt-3 text-body-md font-headline-sm text-admin-on-surface">{subject.name}</div>
-                <div className="text-label-sm font-label-sm text-admin-on-surface-variant">Average Score</div>
-              </div>
-            ))}
-          </div>
-        </div>
       </main>
 
-      <BottomNav active="analytics" />
+      <BottomNav active="stats" />
     </div>
   )
 }

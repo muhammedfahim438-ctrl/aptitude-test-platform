@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../../api/client'
 import BottomNav from '../../components/BottomNav'
+import Sidebar from '../../components/Sidebar'
 
 const NAV_TILES = [
   { key: 'stats', label: 'Stats', icon: 'analytics', path: '/admin/stats' },
@@ -14,6 +15,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState({ totalStudents: 0, testsCompletedToday: 0, questionsLiveToday: 0 })
   const [loading, setLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -48,9 +50,14 @@ export default function AdminDashboard() {
   return (
     <div className="bg-admin-surface-container-lowest text-admin-on-surface flex flex-col min-h-screen">
 
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       <header className="sticky top-0 z-50 bg-admin-surface flex justify-between items-center w-full px-5 h-16 transition-colors duration-200 ease-in-out border-b border-admin-outline-variant">
         <div className="flex items-center gap-4">
-          <button className="p-2 rounded-full hover:bg-admin-surface-container-high transition-colors">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-full hover:bg-admin-surface-container-high transition-colors"
+          >
             <span className="material-symbols-outlined text-admin-secondary">menu</span>
           </button>
           <div className="flex items-center gap-2">

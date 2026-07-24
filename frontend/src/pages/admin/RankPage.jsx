@@ -55,8 +55,8 @@ export default function RankPage() {
 
       <header className="flex justify-between items-center w-full px-5 h-16 bg-admin-surface sticky top-0 z-40 border-b border-admin-outline-variant">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
-            <span className="material-symbols-outlined text-admin-primary">menu</span>
+          <button onClick={() => navigate('/admin/dashboard')} className="p-2 rounded-full hover:bg-admin-surface-container transition-colors">
+            <span className="material-symbols-outlined text-admin-primary">arrow_back</span>
           </button>
           <h1 className="text-headline-sm font-headline-md font-bold text-admin-on-surface">Admin Command</h1>
         </div>
@@ -234,7 +234,7 @@ export default function RankPage() {
         )}
       </main>
 
-      <BottomNav active="leaderboard" />
+      <BottomNav active="rank" />
     </div>
   )
 }
